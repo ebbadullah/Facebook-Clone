@@ -1,0 +1,10 @@
+# Compiled output
+/dist
+/build
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+uploads/

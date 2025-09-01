@@ -10,6 +10,7 @@ const Header = ({ onMobileMenuToggle }) => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { user } = useSelector((state) => state.auth)
+    const { friendRequests } = useSelector((state) => state.users)
     const [anchorEl, setAnchorEl] = useState(null)
     const [activeTab, setActiveTab] = useState(0)
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -32,12 +33,22 @@ const Header = ({ onMobileMenuToggle }) => {
         handleMenuClose()
     }
 
+    const handleFriendsTab = () => {
+        setActiveTab(1)
+        navigate("/friends")
+    }
+
+    const handleHomeTab = () => {
+        setActiveTab(0)
+        navigate("/")
+    }
+
     const navigationItems = [
-        { icon: Home, label: "Home" },
-        { icon: People, label: "Friends" },
-        { icon: OndemandVideo, label: "Watch" },
-        { icon: Storefront, label: "Marketplace" },
-        { icon: SportsEsports, label: "Gaming" },
+        { icon: Home, label: "Home", onClick: handleHomeTab },
+        { icon: People, label: "Friends", onClick: handleFriendsTab, badge: friendRequests?.length || 0 },
+        { icon: OndemandVideo, label: "Watch", onClick: () => setActiveTab(2) },
+        { icon: Storefront, label: "Marketplace", onClick: () => setActiveTab(3) },
+        { icon: SportsEsports, label: "Gaming", onClick: () => setActiveTab(4) },
     ]
 
     return (
@@ -59,8 +70,38 @@ const Header = ({ onMobileMenuToggle }) => {
                     {/* Center Section - Navigation */}
                     <Box sx={{ display: { xs: "none", md: "flex" }, justifyContent: "center", flex: 1, maxWidth: "600px" }}>
                         {navigationItems.map((item, index) => (
-                            <IconButton key={index} onClick={() => setActiveTab(index)} sx={{ mx: 0.5, px: { md: 2, lg: 4 }, py: 1.5, borderRadius: "8px", color: activeTab === index ? "#1877f2" : "#65676b", position: "relative", transition: "all 0.2s ease", "&:hover": { backgroundColor: "#f0f2f5", color: "#1877f2" }, "&::after": { content: '""', position: "absolute", bottom: 0, left: 0, right: 0, height: "3px", backgroundColor: activeTab === index ? "#1877f2" : "transparent", borderRadius: "3px 3px 0 0", transition: "background-color 0.2s ease" } }}>
-                                <item.icon sx={{ fontSize: { md: "20px", lg: "24px" } }} />
+                            <IconButton 
+                                key={index} 
+                                onClick={item.onClick} 
+                                sx={{ 
+                                    mx: 0.5, 
+                                    px: { md: 2, lg: 4 }, 
+                                    py: 1.5, 
+                                    borderRadius: "8px", 
+                                    color: activeTab === index ? "#1877f2" : "#65676b", 
+                                    position: "relative", 
+                                    transition: "all 0.2s ease", 
+                                    "&:hover": { backgroundColor: "#f0f2f5", color: "#1877f2" }, 
+                                    "&::after": { 
+                                        content: '""', 
+                                        position: "absolute", 
+                                        bottom: 0, 
+                                        left: 0, 
+                                        right: 0, 
+                                        height: "3px", 
+                                        backgroundColor: activeTab === index ? "#1877f2" : "transparent", 
+                                        borderRadius: "3px 3px 0 0", 
+                                        transition: "background-color 0.2s ease" 
+                                    } 
+                                }}
+                            >
+                                {item.badge ? (
+                                    <Badge badgeContent={item.badge} color="error" sx={{ "& .MuiBadge-badge": { fontSize: "10px", height: "16px", minWidth: "16px" } }}>
+                                        <item.icon sx={{ fontSize: { md: "20px", lg: "24px" } }} />
+                                    </Badge>
+                                ) : (
+                                    <item.icon sx={{ fontSize: { md: "20px", lg: "24px" } }} />
+                                )}
                             </IconButton>
                         ))}
                     </Box>

@@ -1,6 +1,6 @@
 import express from "express";
 let route = express.Router();
-import { checkAuthentication, getUser, login, logout, register, verifyOTP, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, } from "../controller/user.controller.js";
+import { checkAuthentication, getUser, login, logout, register, verifyOTP, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, getUserFriends, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, } from "../controller/user.controller.js";
 import { body } from "express-validator";
 import auth from "../middleware/auth.js";
 import upload from "../utils/multer.js";
@@ -30,6 +30,7 @@ route.post("/friend-request/:receiverId", auth, sendFriendRequest);
 route.post("/friend-request/:senderId/accept", auth, acceptFriendRequest);
 route.post("/friend-request/:senderId/reject", auth, rejectFriendRequest);
 route.get("/friend-requests", auth, getFriendRequests);
+route.get("/friends", auth, getUserFriends);
 
 // Block user routes
 route.post("/block/:userId", auth, blockUser);

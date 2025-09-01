@@ -5,6 +5,7 @@ import RegisterPage from "../pages/auth/RegisterPage"
 import OTPVerificationPage from "../pages/auth/OTPVerificationPage"
 import HomePage from "../pages/home/HomePage"
 import ProfilePage from "../pages/profile/ProfilePage"
+import FriendsPage from "../pages/friends/FriendsPage"
 import MainLayout from "../components/layout/MainLayout"
 import AuthLayout from "../components/layout/AuthLayout"
 
@@ -48,6 +49,12 @@ const AppRoutes = () => {
             <Route path="/profile/:userId?" element={
                 <ProtectedRoute>
                     <MainLayout><ProfilePage /></MainLayout>
+                </ProtectedRoute>
+            } />
+
+            <Route path="/friends" element={
+                <ProtectedRoute>
+                    <MainLayout><FriendsPage /></MainLayout>
                 </ProtectedRoute>
             } />
 

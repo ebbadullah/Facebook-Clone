@@ -334,4 +334,21 @@ let updateProfilePicture = async (req, res) => {
     }
 }
 
-export { register, verifyOTP, login, logout, checkAuthentication, getUser, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture }
+let getUserFriends = async (req, res) => {
+    try {
+        const userId = req.userId
+        const userData = await user.findById(userId).populate("following", "name username ProfilePicture followers").select("following")
+        
+        // Filter to show only mutual friends (users who follow each other)
+        const friends = userData.following.filter(friend => 
+            friend.followers && friend.followers.includes(userId)
+        )
+        
+        res.status(200).json({ status: true, data: friends })
+    } catch (error) {
+        console.error("Error getting user friends:", error)
+        res.status(500).json({ status: false, message: "Internal server error", error: error.message })
+    }
+}
+
+export { register, verifyOTP, login, logout, checkAuthentication, getUser, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, getUserFriends }

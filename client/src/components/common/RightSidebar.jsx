@@ -1,12 +1,13 @@
 import { useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Box, Typography, Avatar, Button, List, ListItem, ListItemAvatar, ListItemText } from "@mui/material"
-import { Circle, MoreHoriz, Search } from "@mui/icons-material"
-import { getSuggestedUsers, followUser } from "../../store/slices/userSlice"
+import { Circle, MoreHoriz, Search, PersonAdd, Check, Close } from "@mui/icons-material"
+import { getSuggestedUsers, followUser, sendFriendRequest } from "../../store/slices/userSlice"
+import { toast } from "react-toastify"
 
 const RightSidebar = () => {
     const dispatch = useDispatch()
-    const { suggestedUsers } = useSelector((state) => state.users)
+    const { suggestedUsers, currentUser } = useSelector((state) => state.users)
 
     useEffect(() => {
         dispatch(getSuggestedUsers())
@@ -16,6 +17,15 @@ const RightSidebar = () => {
         dispatch(followUser(userId))
     }
 
+    const handleSendFriendRequest = async (userId) => {
+        try {
+            await dispatch(sendFriendRequest(userId)).unwrap()
+            toast.success("Friend request sent!")
+        } catch (error) {
+            toast.error(error.message || "Failed to send friend request")
+        }
+    }
+
     const contacts = [
         { id: 1, name: "Ali Raza", online: true },
         { id: 2, name: "Hassan Shah", online: true },
@@ -23,6 +33,157 @@ const RightSidebar = () => {
         { id: 4, name: "Bilal Ahmed", online: true },
         { id: 5, name: "Faizan Khan", online: false },
     ]
+
+    const getRelationshipStatus = (user) => {
+        if (!currentUser) return 'none'
+        
+        // Check if already following
+        if (currentUser.following && currentUser.following.includes(user._id)) {
+            return 'following'
+        }
+        
+        // Check if friend request already sent
+        if (currentUser.sentFriendRequests && currentUser.sentFriendRequests.includes(user._id)) {
+            return 'request_sent'
+        }
+        
+        // Check if friend request received
+        if (currentUser.friendRequests && currentUser.friendRequests.includes(user._id)) {
+            return 'request_received'
+        }
+        
+        return 'none'
+    }
+
+    const renderActionButtons = (user) => {
+        const status = getRelationshipStatus(user)
+        
+        switch (status) {
+            case 'following':
+                return (
+                    <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => handleFollow(user._id)}
+                        sx={{ 
+                            flex: 1, 
+                            textTransform: "none", 
+                            fontSize: { xs: "12px", sm: "13px" }, 
+                            fontWeight: 600, 
+                            py: 0.8, 
+                            borderColor: "#e4e6ea", 
+                            color: "#65676b", 
+                            borderRadius: "6px", 
+                            "&:hover": { backgroundColor: "#f0f2f5", borderColor: "#d8dadf" } 
+                        }}
+                    >
+                        Unfollow
+                    </Button>
+                )
+            case 'request_sent':
+                return (
+                    <Button 
+                        variant="outlined" 
+                        size="small" 
+                        disabled
+                        sx={{ 
+                            flex: 1, 
+                            textTransform: "none", 
+                            fontSize: { xs: "12px", sm: "13px" }, 
+                            fontWeight: 600, 
+                            py: 0.8, 
+                            borderColor: "#e4e6ea", 
+                            color: "#65676b", 
+                            borderRadius: "6px",
+                            opacity: 0.6
+                        }}
+                    >
+                        Request Sent
+                    </Button>
+                )
+            case 'request_received':
+                return (
+                    <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
+                        <Button 
+                            variant="contained" 
+                            size="small" 
+                            startIcon={<Check />}
+                            sx={{ 
+                                flex: 1, 
+                                textTransform: "none", 
+                                fontSize: { xs: "12px", sm: "13px" }, 
+                                fontWeight: 600, 
+                                py: 0.8, 
+                                backgroundColor: "#4caf50", 
+                                borderRadius: "6px", 
+                                "&:hover": { backgroundColor: "#45a049" } 
+                            }}
+                        >
+                            Accept
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            startIcon={<Close />}
+                            sx={{ 
+                                flex: 1, 
+                                textTransform: "none", 
+                                fontSize: { xs: "12px", sm: "13px" }, 
+                                fontWeight: 600, 
+                                py: 0.8, 
+                                borderColor: "#f44336", 
+                                color: "#f44336", 
+                                borderRadius: "6px", 
+                                "&:hover": { backgroundColor: "#ffebee", borderColor: "#d32f2f" } 
+                            }}
+                        >
+                            Reject
+                        </Button>
+                    </Box>
+                )
+            default:
+                return (
+                    <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
+                        <Button 
+                            variant="contained" 
+                            size="small" 
+                            startIcon={<PersonAdd />}
+                            onClick={() => handleSendFriendRequest(user._id)}
+                            sx={{ 
+                                flex: 1, 
+                                textTransform: "none", 
+                                fontSize: { xs: "12px", sm: "13px" }, 
+                                fontWeight: 600, 
+                                py: 0.8, 
+                                backgroundColor: "#1877f2", 
+                                borderRadius: "6px", 
+                                "&:hover": { backgroundColor: "#166fe5" } 
+                            }}
+                        >
+                            Add Friend
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            onClick={() => handleFollow(user._id)}
+                            sx={{ 
+                                flex: 1, 
+                                textTransform: "none", 
+                                fontSize: { xs: "12px", sm: "13px" }, 
+                                fontWeight: 600, 
+                                py: 0.8, 
+                                borderColor: "#e4e6ea", 
+                                color: "#65676b", 
+                                borderRadius: "6px", 
+                                "&:hover": { backgroundColor: "#f0f2f5", borderColor: "#d8dadf" } 
+                            }}
+                        >
+                            Follow
+                        </Button>
+                    </Box>
+                )
+        }
+    }
 
     return (
         <Box sx={{ width: "100%", height: "100%", overflowY: "auto", backgroundColor: "white", "&::-webkit-scrollbar": { width: "8px" }, "&::-webkit-scrollbar-track": { background: "#f1f1f1" }, "&::-webkit-scrollbar-thumb": { background: "#c1c1c1", borderRadius: "4px" } }}>
@@ -80,10 +241,7 @@ const RightSidebar = () => {
                                     </Box>
                                 </Box>
 
-                                <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
-                                    <Button variant="contained" size="small" onClick={() => handleFollow(user._id)} sx={{ flex: 1, textTransform: "none", fontSize: { xs: "12px", sm: "13px" }, fontWeight: 600, py: 0.8, backgroundColor: "#1877f2", borderRadius: "6px", "&:hover": { backgroundColor: "#166fe5" } }}>Add Friend</Button>
-                                    <Button variant="outlined" size="small" sx={{ flex: 1, textTransform: "none", fontSize: { xs: "12px", sm: "13px" }, fontWeight: 600, py: 0.8, borderColor: "#e4e6ea", color: "#65676b", borderRadius: "6px", "&:hover": { backgroundColor: "#f0f2f5", borderColor: "#d8dadf" } }}>Remove</Button>
-                                </Box>
+                                {renderActionButtons(user)}
                             </ListItem>
                         ))}
                     </List>

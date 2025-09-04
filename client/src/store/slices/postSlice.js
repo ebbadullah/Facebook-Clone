@@ -1,104 +1,83 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import postService from "../../services/postService";
 
-export const createPost = createAsyncThunk(
-    "posts/create",
-    async (postData, { rejectWithValue }) => {
-        try {
-            const response = await postService.createPost(postData);
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const createPost = createAsyncThunk("posts/create", async (postData, { rejectWithValue }) => {
+    try {
+        const response = await postService.createPost(postData);
+        return response.data;
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const getAllPosts = createAsyncThunk(
-    "posts/getAll",
-    async (_, { rejectWithValue }) => {
-        try {
-            const response = await postService.getAllPosts();
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const getAllPosts = createAsyncThunk("posts/getAll", async (_, { rejectWithValue }) => {
+    try {
+        const response = await postService.getAllPosts();
+        return response.data;
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const likePost = createAsyncThunk(
-    "posts/like",
-    async (postId, { rejectWithValue, getState }) => {
-        try {
-            const response = await postService.likePost(postId);
-            const { user } = getState().auth;
-            
-            return { 
-                postId, 
-                userId: user?._id, 
-                user, 
-                data: response.data.data, // Fixed: directly access response.data.data
-                isLiked: response.data.data.isLiked
-            };
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const likePost = createAsyncThunk("posts/like", async (postId, { rejectWithValue, getState }) => {
+    try {
+        const response = await postService.likePost(postId);
+        const { user } = getState().auth;
+        
+        return { 
+            postId, 
+            userId: user?._id, 
+            user, 
+            data: response.data.data,
+            isLiked: response.data.data.isLiked
+        };
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const bookmarkPost = createAsyncThunk(
-    "posts/bookmark",
-    async (postId, { rejectWithValue }) => {
-        try {
-            const response = await postService.bookmarkPost(postId);
-            return { postId, ...response.data };
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const bookmarkPost = createAsyncThunk("posts/bookmark", async (postId, { rejectWithValue }) => {
+    try {
+        const response = await postService.bookmarkPost(postId);
+        return { postId, ...response.data };
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const commentOnPost = createAsyncThunk(
-    "posts/comment",
-    async ({ postId, comment }, { rejectWithValue, getState }) => {
-        try {
-            const response = await postService.commentOnPost(postId, comment);
-            const { user } = getState().auth;
-            return {
-                postId,
-                comment: {
-                    ...response.data.comment,
-                    author: user // Add author info to the comment
-                }
-            };
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const commentOnPost = createAsyncThunk("posts/comment", async ({ postId, comment }, { rejectWithValue, getState }) => {
+    try {
+        const response = await postService.commentOnPost(postId, comment);
+        const { user } = getState().auth;
+        return {
+            postId,
+            comment: {
+                ...response.data.comment,
+                author: user
+            }
+        };
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const deletePost = createAsyncThunk(
-    "posts/delete",
-    async (postId, { rejectWithValue }) => {
-        try {
-            const response = await postService.deletePost(postId);
-            return { postId, ...response.data };
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const deletePost = createAsyncThunk("posts/delete", async (postId, { rejectWithValue }) => {
+    try {
+        const response = await postService.deletePost(postId);
+        return { postId, ...response.data };
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
-export const updatePost = createAsyncThunk(
-    "posts/update",
-    async ({ postId, caption }, { rejectWithValue }) => {
-        try {
-            const response = await postService.updatePost(postId, caption);
-            return { postId, caption, ...response.data };
-        } catch (error) {
-            return rejectWithValue(error.response.data);
-        }
+export const updatePost = createAsyncThunk("posts/update", async ({ postId, caption }, { rejectWithValue }) => {
+    try {
+        const response = await postService.updatePost(postId, caption);
+        return { postId, caption, ...response.data };
+    } catch (error) {
+        return rejectWithValue(error.response.data);
     }
-);
+});
 
 const initialState = {
     posts: [],
@@ -125,7 +104,6 @@ const postSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            // Create Post
             .addCase(createPost.pending, (state) => {
                 state.createPostLoading = true;
                 state.error = null;
@@ -138,8 +116,6 @@ const postSlice = createSlice({
                 state.createPostLoading = false;
                 state.error = action.payload.message;
             })
-
-            // Get All Posts
             .addCase(getAllPosts.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -152,27 +128,19 @@ const postSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload.message;
             })
-
-            // Like Post - FIXED
             .addCase(likePost.fulfilled, (state, action) => {
                 const { postId, data } = action.payload;
                 const post = state.posts.find((p) => p._id === postId);
                 
                 if (post && data) {
-                    // Update the post likes with the data from backend
                     post.likes = data.likes;
-                    // Add isLiked property to track user's like status
                     post.isLiked = data.isLiked;
-                    
-                    // Force re-render by creating new array reference
                     post.likes = [...post.likes];
                 }
             })
             .addCase(likePost.rejected, (state, action) => {
                 state.error = action.payload.message;
             })
-
-            // Delete Post
             .addCase(deletePost.fulfilled, (state, action) => {
                 const postId = action.payload.postId;
                 state.posts = state.posts.filter((p) => p._id !== postId);
@@ -180,8 +148,6 @@ const postSlice = createSlice({
             .addCase(deletePost.rejected, (state, action) => {
                 state.error = action.payload.message;
             })
-
-            // Update Post
             .addCase(updatePost.fulfilled, (state, action) => {
                 const post = state.posts.find((p) => p._id === action.payload.postId);
                 if (post) {
@@ -191,7 +157,6 @@ const postSlice = createSlice({
             .addCase(updatePost.rejected, (state, action) => {
                 state.error = action.payload.message;
             })
-
             .addCase(commentOnPost.fulfilled, (state, action) => {
                 const post = state.posts.find((p) => p._id === action.payload.postId);
                 if (post) {

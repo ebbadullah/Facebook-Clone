@@ -1,9 +1,9 @@
 import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Box, Paper, Avatar, Typography, IconButton, Button, Menu, MenuItem, TextField, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemAvatar, ListItemText } from "@mui/material"
-import { MoreHoriz, ThumbUp, ChatBubbleOutline, Share, BookmarkBorder, Send, Public, ThumbUpOffAlt, Close } from "@mui/icons-material"
+import { MoreHoriz, ThumbUp, ChatBubbleOutline, Share, BookmarkBorder, Send, Public, ThumbUpOffAlt, Close, Edit, Delete } from "@mui/icons-material"
 import { toast } from "react-toastify"
-import { likePost, bookmarkPost, commentOnPost } from "../../store/slices/postSlice"
+import { likePost, bookmarkPost, commentOnPost, deletePost, updatePost } from "../../store/slices/postSlice"
 import api from "../../services/api"
 import GalleryViewer from "../../Plugins/LightGallery/Index"
 import VideoJSPlayer from "../../Plugins/VideoJs/Index"
@@ -20,34 +20,58 @@ const PostCard = ({ post }) => {
     const [likesList, setLikesList] = useState([])
     const [showShareDialog, setShowShareDialog] = useState(false)
     const [shareCaption, setShareCaption] = useState("")
+    const [isEditing, setIsEditing] = useState(false)
+    const [editCaption, setEditCaption] = useState(post.caption || "")
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [isLiking, setIsLiking] = useState(false)
 
-    const mediaItems =
-        Array.isArray(post.media) && post.media.length > 0
-            ? post.media.map((m) => ({
-                url: m.url,
-                type: m.type,
-                caption: m.caption || post.caption,
-                alt: m.alt || `Media from ${post.author?.name}`,
-                poster: m.poster, // Assuming poster is available for video items
-            }))
-            : post.media_url
-                ? [
-                    {
-                        url: post.media_url,
-                        type: post.media_type || (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(post.media_url) ? "video" : "image"),
-                        caption: post.caption,
-                        alt: `Post by ${post.author?.name}`,
-                        poster: post.media_poster, // Assuming poster is available for video items
-                    },
-                ]
-                : []
+    const mediaItems = Array.isArray(post.media) && post.media.length > 0
+        ? post.media.map((m) => ({
+            url: m.url,
+            type: m.type,
+            caption: m.caption || post.caption,
+            alt: m.alt || `Media from ${post.author?.name}`,
+            poster: m.poster,
+        }))
+        : post.media_url
+            ? [{
+                url: post.media_url,
+                type: post.media_type || (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(post.media_url) ? "video" : "image"),
+                caption: post.caption,
+                alt: `Post by ${post.author?.name}`,
+                poster: post.media_poster,
+            }]
+            : []
 
     const videoItems = mediaItems.filter((item) => item.type === "video")
     const imageItems = mediaItems.filter((item) => item.type !== "video")
 
     const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
     const handleMenuClose = () => setAnchorEl(null)
-    const handleLike = () => dispatch(likePost(post._id))
+    
+    const handleLike = async () => {
+        if (isLiking) return;
+        
+        setIsLiking(true);
+        try {
+            const result = await dispatch(likePost(post._id)).unwrap();
+            
+            // Check if the like action was successful
+            if (result.data && result.data.message) {
+                if (result.data.message.includes("liked")) {
+                    toast.success("Post liked!");
+                } else if (result.data.message.includes("disliked")) {
+                    toast.success("Post disliked!");
+                }
+            }
+        } catch (error) {
+            console.error("Like error:", error);
+            toast.error("Failed to like post");
+        } finally {
+            setIsLiking(false);
+        }
+    }
+    
     const handleBookmark = () => dispatch(bookmarkPost(post._id))
 
     const handleComment = () => {
@@ -85,6 +109,47 @@ const PostCard = ({ post }) => {
         }
     }
 
+    const handleEdit = () => {
+        setIsEditing(true)
+        setEditCaption(post.caption || "")
+        handleMenuClose()
+    }
+
+    const handleSaveEdit = () => {
+        if (!editCaption.trim()) {
+            toast.error("Caption cannot be empty")
+            return
+        }
+        
+        dispatch(updatePost({ postId: post._id, caption: editCaption }))
+            .then((result) => {
+                if (result.type === "posts/update/fulfilled") {
+                    toast.success("Post updated successfully!")
+                    setIsEditing(false)
+                } else {
+                    toast.error("Failed to update post")
+                }
+            })
+            .catch(() => {
+                toast.error("Failed to update post")
+            })
+    }
+
+    const handleDelete = () => {
+        dispatch(deletePost(post._id))
+            .then((result) => {
+                if (result.type === "posts/delete/fulfilled") {
+                    toast.success("Post deleted successfully!")
+                    setShowDeleteConfirm(false)
+                } else {
+                    toast.error("Failed to delete post")
+                }
+            })
+            .catch(() => {
+                toast.error("Failed to delete post")
+            })
+    }
+
     const formatDate = (dateString) => {
         const date = new Date(dateString)
         const now = new Date()
@@ -95,7 +160,15 @@ const PostCard = ({ post }) => {
         return date.toLocaleDateString()
     }
 
-    const isLiked = post.likes?.includes(user?._id)
+    // Check if the current user has liked this post
+    const isLiked = post.likes?.some(like => {
+        if (typeof like === 'object') {
+            return like._id === user?._id;
+        }
+        return like === user?._id;
+    }) || post.isLiked;
+
+    const isAuthor = post.author?._id === user?._id
 
     return (
         <Paper sx={{ mb: 2, borderRadius: "12px", backgroundColor: "white", boxShadow: "0 2px 4px rgba(0,0,0,0.1)", border: "1px solid #e4e6ea", overflow: "hidden", maxWidth: "680px", mx: "auto" }} className="post-card fade-in">
@@ -112,28 +185,92 @@ const PostCard = ({ post }) => {
                             </Box>
                         </Box>
                     </Box>
-                    <IconButton onClick={handleMenuOpen} className="fb-button-secondary" sx={{ color: "#65676b", width: "36px", height: "36px", "&:hover": { backgroundColor: "#f0f2f5" } }}><MoreHoriz /></IconButton>
+                    <IconButton onClick={handleMenuOpen} className="fb-button-secondary" sx={{ color: "#65676b", width: "36px", height: "36px", "&:hover": { backgroundColor: "#f0f2f5" } }}>
+                        <MoreHoriz />
+                    </IconButton>
                     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: "8px", boxShadow: "0 8px 16px rgba(0,0,0,0.15)", border: "1px solid #e4e6ea" } }}>
                         <MenuItem onClick={handleBookmark} sx={{ py: 1.5, px: 2 }}><BookmarkBorder sx={{ mr: 2, fontSize: "20px" }} /> Save post</MenuItem>
-                        {post.author?._id === user?._id && <MenuItem onClick={handleMenuClose} sx={{ py: 1.5, px: 2 }}>Edit post</MenuItem>}
+                        {isAuthor && (
+                            <>
+                                <MenuItem onClick={handleEdit} sx={{ py: 1.5, px: 2 }}><Edit sx={{ mr: 2, fontSize: "20px" }} /> Edit post</MenuItem>
+                                <MenuItem onClick={() => { setShowDeleteConfirm(true); handleMenuClose(); }} sx={{ py: 1.5, px: 2, color: "error.main" }}><Delete sx={{ mr: 2, fontSize: "20px" }} /> Delete post</MenuItem>
+                            </>
+                        )}
                     </Menu>
                 </Box>
             </Box>
 
             <Box sx={{ px: 3, pb: 2 }}>
-                <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.4, fontSize: "15px", color: "#1c1e21" }}>{post.caption}</Typography>
+                {isEditing ? (
+                    <Box sx={{ mb: 2 }}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            value={editCaption}
+                            onChange={(e) => setEditCaption(e.target.value)}
+                            variant="outlined"
+                            sx={{ mb: 2 }}
+                        />
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                            <Button onClick={() => setIsEditing(false)} variant="outlined">Cancel</Button>
+                            <Button onClick={handleSaveEdit} variant="contained">Save</Button>
+                        </Box>
+                    </Box>
+                ) : (
+                    <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.4, fontSize: "15px", color: "#1c1e21" }}>{post.caption}</Typography>
+                )}
             </Box>
 
             {mediaItems.length > 0 && (
                 <Box sx={{ mb: 1 }}>
                     {videoItems.map((video, index) => (
                         <Box key={`video-${index}`} sx={{ mb: imageItems.length > 0 ? 2 : 0 }}>
-                            <VideoJSPlayer src={video.url} poster={video.poster} className="post-video-player" style={{ minHeight: "300px", maxHeight: "500px", borderRadius: "0px" }} onReady={() => { console.log("[v0] VideoJS player ready for post:", post._id) }} onPlay={() => { console.log("[v0] Video playing:", video.url) }} onPause={() => { console.log("[v0] Video paused:", video.url) }} controls={true} preload="metadata" playbackRates={[0.5, 0.75, 1, 1.25, 1.5, 2]} enableHotkeys={true} enableFullscreen={true} enablePictureInPicture={true} enableTheater={true} responsive={true} fluid={true} />
+                            <VideoJSPlayer
+                                src={video.url}
+                                poster={video.poster}
+                                className="post-video-player"
+                                style={{ minHeight: "300px", maxHeight: "500px", borderRadius: "0px" }}
+                                onReady={() => { }}
+                                onPlay={() => { }}
+                                onPause={() => { }}
+                                controls={true}
+                                preload="metadata"
+                                playbackRates={[0.5, 0.75, 1, 1.25, 1.5, 2]}
+                                enableHotkeys={true}
+                                enableFullscreen={true}
+                                enablePictureInPicture={true}
+                                enableTheater={true}
+                                responsive={true}
+                                fluid={true}
+                            />
                         </Box>
                     ))}
 
                     {imageItems.length > 0 && (
-                        <GalleryViewer items={imageItems} settings={{ showThumbByDefault: imageItems.length > 1, counter: imageItems.length > 1, download: true, zoom: true, actualSize: true, showZoomInOutIcons: true, rotate: true, flipHorizontal: true, flipVertical: true, showCloseIcon: true, closable: true, escKey: true, mode: "lg-fade", speed: 400, addClass: "lg-custom-gallery", selector: ".gallery-item" }} className="post-gallery" style={{ minHeight: "400px", maxHeight: "600px" }} onOpened={() => { console.log("[v0] Gallery opened for post:", post._id) }} />
+                        <GalleryViewer
+                            items={imageItems}
+                            settings={{
+                                showThumbByDefault: imageItems.length > 1,
+                                counter: imageItems.length > 1,
+                                download: true,
+                                zoom: true,
+                                actualSize: true,
+                                showZoomInOutIcons: true,
+                                rotate: true,
+                                flipHorizontal: true,
+                                flipVertical: true,
+                                showCloseIcon: true,
+                                closable: true,
+                                escKey: true,
+                                mode: "lg-fade",
+                                speed: 400,
+                                addClass: "lg-custom-gallery",
+                                selector: ".gallery-item",
+                            }}
+                            className="post-gallery"
+                            style={{ minHeight: "400px", maxHeight: "600px" }}
+                            onOpened={() => { }}
+                        />
                     )}
                 </Box>
             )}
@@ -141,18 +278,28 @@ const PostCard = ({ post }) => {
             <Box sx={{ px: 3, py: 2 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Tooltip title={post.likes?.length > 0 ? (
-                            <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Liked by:</Typography>
-                                {post.likes?.slice(0, 3).map((like, index) => (
-                                    <Typography key={index} variant="body2">{like.name || like.username || "Unknown User"}</Typography>
-                                ))}
-                                {post.likes?.length > 3 && <Typography variant="body2" sx={{ fontStyle: "italic" }}>and {post.likes.length - 3} more...</Typography>}
-                            </Box>
-                        ) : (
-                            <Typography variant="body2">No likes yet</Typography>
-                        )} arrow placement="top">
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, cursor: post.likes?.length > 0 ? "pointer" : "default", "&:hover": { opacity: post.likes?.length > 0 ? 0.8 : 1 } }} onClick={post.likes?.length > 0 ? handleShowLikes : undefined} className="hover-scale">
+                        <Tooltip
+                            title={post.likes?.length > 0 ? (
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Liked by:</Typography>
+                                    {post.likes?.slice(0, 3).map((like, index) => (
+                                        <Typography key={index} variant="body2">
+                                            {like.name || like.username || (typeof like === 'object' ? like._id : like)}
+                                        </Typography>
+                                    ))}
+                                    {post.likes?.length > 3 && <Typography variant="body2" sx={{ fontStyle: "italic" }}>and {post.likes.length - 3} more...</Typography>}
+                                </Box>
+                            ) : (
+                                <Typography variant="body2">No likes yet</Typography>
+                            )}
+                            arrow
+                            placement="top"
+                        >
+                            <Box
+                                sx={{ display: "flex", alignItems: "center", gap: 1, cursor: post.likes?.length > 0 ? "pointer" : "default", "&:hover": { opacity: post.likes?.length > 0 ? 0.8 : 1 } }}
+                                onClick={post.likes?.length > 0 ? handleShowLikes : undefined}
+                                className="hover-scale"
+                            >
                                 <Box sx={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: post.likes?.length > 0 ? "#1877f2" : "#e4e6ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <ThumbUp sx={{ fontSize: "12px", color: post.likes?.length > 0 ? "white" : "#65676b" }} />
                                 </Box>
@@ -167,9 +314,31 @@ const PostCard = ({ post }) => {
             <div className="fb-divider" />
 
             <Box sx={{ display: "flex", justifyContent: "space-around", py: 1, px: 2 }}>
-                <Button startIcon={isLiked ? <ThumbUp /> : <ThumbUpOffAlt />} onClick={handleLike} className={`fb-button ${isLiked ? "fb-button-primary" : "fb-button-secondary"}`} sx={{ color: isLiked ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}>Like</Button>
-                <Button startIcon={<ChatBubbleOutline />} onClick={() => setShowComments(!showComments)} className="fb-button fb-button-secondary" sx={{ color: "#65676b", textTransform: "none", fontWeight: 600, flex: 1, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}>Comment</Button>
-                <Button startIcon={<Share />} onClick={() => setShowShareDialog(true)} className="fb-button fb-button-secondary" sx={{ color: "#65676b", textTransform: "none", fontWeight: 600, flex: 1, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}>Share</Button>
+                <Button
+                    startIcon={isLiked ? <ThumbUp /> : <ThumbUpOffAlt />}
+                    onClick={handleLike}
+                    disabled={isLiking}
+                    className={`fb-button ${isLiked ? "fb-button-primary" : "fb-button-secondary"}`}
+                    sx={{ color: isLiked ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}
+                >
+                    {isLiked ? 'Liked' : 'Like'}
+                </Button>
+                <Button
+                    startIcon={<ChatBubbleOutline />}
+                    onClick={() => setShowComments(!showComments)}
+                    className="fb-button fb-button-secondary"
+                    sx={{ color: "#65676b", textTransform: "none", fontWeight: 600, flex: 1, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}
+                >
+                    Comment
+                </Button>
+                <Button
+                    startIcon={<Share />}
+                    onClick={() => setShowShareDialog(true)}
+                    className="fb-button fb-button-secondary"
+                    sx={{ color: "#65676b", textTransform: "none", fontWeight: 600, flex: 1, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}
+                >
+                    Share
+                </Button>
             </Box>
 
             {showComments && (
@@ -179,8 +348,38 @@ const PostCard = ({ post }) => {
                         <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
                             <Avatar src={user?.ProfilePicture} className="fb-avatar fb-avatar-small">{user?.name?.charAt(0)}</Avatar>
                             <Box sx={{ flex: 1, display: "flex", gap: 1 }}>
-                                <TextField fullWidth size="small" placeholder="Write a comment..." value={comment} onChange={(e) => setComment(e.target.value)} onKeyPress={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment() } }} className="fb-input" sx={{ "& .MuiOutlinedInput-root": { borderRadius: "20px", backgroundColor: "#f0f2f5", border: "none", "& fieldset": { border: "none" }, "&:hover": { backgroundColor: "#e4e6ea" }, "&.Mui-focused": { backgroundColor: "#ffffff", boxShadow: "0 0 0 2px rgba(24, 119, 242, 0.2)" } } }} />
-                                <IconButton onClick={handleComment} disabled={!comment.trim()} className="fb-button-primary" sx={{ color: comment.trim() ? "#1877f2" : "#bcc0c4", width: "36px", height: "36px" }}><Send /></IconButton>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    placeholder="Write a comment..."
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    onKeyPress={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault()
+                                            handleComment()
+                                        }
+                                    }}
+                                    className="fb-input"
+                                    sx={{
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: "20px",
+                                            backgroundColor: "#f0f2f5",
+                                            border: "none",
+                                            "& fieldset": { border: "none" },
+                                            "&:hover": { backgroundColor: "#e4e6ea" },
+                                            "&.Mui-focused": { backgroundColor: "#ffffff", boxShadow: "0 0 0 2px rgba(24, 119, 242, 0.2)" },
+                                        },
+                                    }}
+                                />
+                                <IconButton
+                                    onClick={handleComment}
+                                    disabled={!comment.trim()}
+                                    className="fb-button-primary"
+                                    sx={{ color: comment.trim() ? "#1877f2" : "#bcc0c4", width: "36px", height: "36px" }}
+                                >
+                                    <Send />
+                                </IconButton>
                             </Box>
                         </Box>
                         {post.comments?.map((c, index) => (
@@ -188,7 +387,7 @@ const PostCard = ({ post }) => {
                                 <Avatar className="fb-avatar fb-avatar-small">{c.author?.name?.charAt(0)}</Avatar>
                                 <Box sx={{ backgroundColor: "#f0f2f5", borderRadius: "16px", px: 3, py: 2, flex: 1 }}>
                                     <Typography variant="subtitle2" className="fb-text-primary" sx={{ fontSize: "13px" }}>{c.author?.name}</Typography>
-                                    <Typography variant="body2" sx={{ color: "#1c1e21", fontSize: "14px" }}>{c.comment}</Typography>
+                                    <Typography variant="body2" sx={{ color: "##1c1e21", fontSize: "14px" }}>{c.comment}</Typography>
                                 </Box>
                             </Box>
                         ))}
@@ -225,7 +424,15 @@ const PostCard = ({ post }) => {
                 <DialogContent>
                     <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Add a caption to your share:</Typography>
-                        <TextField fullWidth multiline rows={3} value={shareCaption} onChange={(e) => setShareCaption(e.target.value)} placeholder="What's on your mind?" variant="outlined" />
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            value={shareCaption}
+                            onChange={(e) => setShareCaption(e.target.value)}
+                            placeholder="What's on your mind?"
+                            variant="outlined"
+                        />
                     </Box>
                     <Box sx={{ border: "1px solid #e4e6ea", borderRadius: 2, p: 2, backgroundColor: "#f8f9fa" }}>
                         <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
@@ -236,7 +443,16 @@ const PostCard = ({ post }) => {
                         {mediaItems[0] && (
                             <Box sx={{ width: "100%", height: 120, borderRadius: 1, overflow: "hidden", backgroundColor: "#e4e6ea" }}>
                                 {mediaItems[0].type === "video" ? (
-                                    <VideoJSPlayer src={mediaItems[0].url} style={{ width: "100%", height: "100%", borderRadius: "4px" }} controls={false} preload="metadata" enableHotkeys={false} enableFullscreen={false} enablePictureInPicture={false} enableTheater={false} />
+                                    <VideoJSPlayer
+                                        src={mediaItems[0].url}
+                                        style={{ width: "100%", height: "100%", borderRadius: "4px" }}
+                                        controls={false}
+                                        preload="metadata"
+                                        enableHotkeys={false}
+                                        enableFullscreen={false}
+                                        enablePictureInPicture={false}
+                                        enableTheater={false}
+                                    />
                                 ) : (
                                     <img src={mediaItems[0].url || "/placeholder.svg"} alt="Post preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 )}
@@ -247,6 +463,24 @@ const PostCard = ({ post }) => {
                 <DialogActions>
                     <Button onClick={() => setShowShareDialog(false)}>Cancel</Button>
                     <Button onClick={handleShare} variant="contained" disabled={!shareCaption.trim()}>Share</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography variant="h6">Delete Post</Typography>
+                        <IconButton onClick={() => setShowDeleteConfirm(false)}><Close /></IconButton>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                        Are you sure you want to delete this post? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+                    <Button onClick={handleDelete} variant="contained" color="error">Delete</Button>
                 </DialogActions>
             </Dialog>
         </Paper>

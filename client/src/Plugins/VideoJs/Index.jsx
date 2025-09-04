@@ -1,29 +1,100 @@
+"use client"
+
 import { useEffect, useRef, useCallback } from "react"
 
 export const VideoJSPlayer = ({
-    src, poster, className = "", style = {}, onReady = () => { }, onPlay = () => { }, onPause = () => { }, onEnded = () => { }, controls = true, autoplay = false, muted = false, loop = false, preload = "metadata", width = "100%", height = "auto", responsive = true, fluid = true, playbackRates = [0.5, 1, 1.25, 1.5, 2], enableHotkeys = true, enableFullscreen = true, enablePictureInPicture = true, enableTheater = true, quality = "auto", subtitles = [], thumbnails = null,
+  src,
+  poster,
+  className = "",
+  style = {},
+  onReady = () => {},
+  onPlay = () => {},
+  onPause = () => {},
+  onEnded = () => {},
+  controls = true,
+  autoplay = false,
+  muted = false,
+  loop = false,
+  preload = "metadata",
+  width = "100%",
+  height = "auto",
+  responsive = true,
+  fluid = true,
+  playbackRates = [0.5, 1, 1.25, 1.5, 2],
+  enableHotkeys = true,
+  enableFullscreen = true,
+  enablePictureInPicture = true,
+  enableTheater = true,
+  quality = "auto",
+  subtitles = [],
+  thumbnails = null,
 }) => {
-    const videoRef = useRef(null)
-    const playerRef = useRef(null)
-    const containerRef = useRef(null)
+  const videoRef = useRef(null)
+  const playerRef = useRef(null)
+  const containerRef = useRef(null)
+  const observerRef = useRef(null)
 
-    const formatTime = (seconds) => {
-        if (!seconds || isNaN(seconds)) return "0:00"
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
-        return `${mins}:${secs.toString().padStart(2, "0")}`
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return "0:00"
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const setupViewportObserver = useCallback(() => {
+    if (!videoRef.current) return
+
+    const video = videoRef.current
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          // Video is in viewport - auto play
+          console.log("[v0] Video entered viewport, auto-playing")
+          video.play().catch((error) => {
+            console.log("[v0] Auto-play failed:", error)
+          })
+        } else {
+          // Video is out of viewport - auto pause
+          console.log("[v0] Video left viewport, auto-pausing")
+          video.pause()
+        }
+      })
     }
 
-    const createCustomControls = useCallback((video) => {
-        const controls = document.createElement("div")
-        controls.className = "custom-controls"
+    observerRef.current = new IntersectionObserver(observerCallback, {
+      threshold: 0.5, // Trigger when 50% of video is visible
+      rootMargin: "0px",
+    })
 
-        const playbackRateOptions = playbackRates.map((rate) => `<option value="${rate}"${rate === 1 ? " selected" : ""}>${rate}x</option>`).join("")
-        const pipButton = enablePictureInPicture ? `<button class="pip-btn" title="Picture in Picture (P)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1.9-2-2-2zm0 16H3V5h18v14z"/></svg></button>` : ""
-        const theaterButton = enableTheater ? `<button class="theater-btn" title="Theater Mode (T)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1.9-2-2-2zm0 10H5V8h14v8z"/></svg></button>` : ""
-        const fullscreenButton = enableFullscreen ? `<button class="fullscreen-btn" title="Fullscreen (F)"><svg class="fullscreen-enter" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg><svg class="fullscreen-exit" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg></button>` : ""
+    observerRef.current.observe(video)
 
-        controls.innerHTML = `
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [])
+
+  const createCustomControls = useCallback(
+    (video) => {
+      const controls = document.createElement("div")
+      controls.className = "custom-controls"
+
+      const playbackRateOptions = playbackRates
+        .map((rate) => `<option value="${rate}"${rate === 1 ? " selected" : ""}>${rate}x</option>`)
+        .join("")
+      const pipButton = enablePictureInPicture
+        ? `<button class="pip-btn" title="Picture in Picture (P)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg></button>`
+        : ""
+      const theaterButton = enableTheater
+        ? `<button class="theater-btn" title="Theater Mode (T)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/></svg></button>`
+        : ""
+      const fullscreenButton = enableFullscreen
+        ? `<button class="fullscreen-btn" title="Fullscreen (F)"><svg class="fullscreen-enter" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg><svg class="fullscreen-exit" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg></button>`
+        : ""
+
+      controls.innerHTML = `
             <div class="video-controls-overlay">
                 <div class="video-progress-container">
                     <div class="video-progress-bar"><div class="video-progress-filled"></div><div class="video-progress-handle"></div></div>
@@ -45,205 +116,280 @@ export const VideoJSPlayer = ({
                 </div>
             </div>
         `
-        return controls
-    }, [playbackRates, enablePictureInPicture, enableTheater, enableFullscreen])
+      return controls
+    },
+    [playbackRates, enablePictureInPicture, enableTheater, enableFullscreen],
+  )
 
-    const addControlsLogic = useCallback((controls, video) => {
-        const playPauseBtn = controls.querySelector(".play-pause-btn")
-        const volumeBtn = controls.querySelector(".volume-btn")
-        const volumeSlider = controls.querySelector(".volume-slider")
-        const progressBar = controls.querySelector(".video-progress-bar")
-        const progressFilled = controls.querySelector(".video-progress-filled")
-        const currentTimeSpan = controls.querySelector(".current-time")
-        const durationSpan = controls.querySelector(".duration")
-        const playbackRateSelect = controls.querySelector(".playback-rate-select")
-        const pipBtn = controls.querySelector(".pip-btn")
-        const theaterBtn = controls.querySelector(".theater-btn")
-        const fullscreenBtn = controls.querySelector(".fullscreen-btn")
+  const addControlsLogic = useCallback((controls, video) => {
+    const playPauseBtn = controls.querySelector(".play-pause-btn")
+    const volumeBtn = controls.querySelector(".volume-btn")
+    const volumeSlider = controls.querySelector(".volume-slider")
+    const progressBar = controls.querySelector(".video-progress-bar")
+    const progressFilled = controls.querySelector(".video-progress-filled")
+    const currentTimeSpan = controls.querySelector(".current-time")
+    const durationSpan = controls.querySelector(".duration")
+    const playbackRateSelect = controls.querySelector(".playback-rate-select")
+    const pipBtn = controls.querySelector(".pip-btn")
+    const theaterBtn = controls.querySelector(".theater-btn")
+    const fullscreenBtn = controls.querySelector(".fullscreen-btn")
 
-        if (playPauseBtn) {
-            playPauseBtn.addEventListener("click", () => { video.paused ? video.play() : video.pause() })
+    const handleVideoClick = (e) => {
+      // Prevent triggering when clicking on controls
+      if (e.target.closest(".custom-controls")) return
+
+      console.log("[v0] Video clicked, toggling play/pause")
+      if (video.paused) {
+        video.play()
+      } else {
+        video.pause()
+      }
+    }
+
+    video.addEventListener("click", handleVideoClick)
+
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener("click", () => {
+        video.paused ? video.play() : video.pause()
+      })
+    }
+
+    const updatePlayPauseIcon = () => {
+      const playIcon = playPauseBtn?.querySelector(".play-icon")
+      const pauseIcon = playPauseBtn?.querySelector(".pause-icon")
+      if (video.paused) {
+        if (playIcon) playIcon.style.display = "block"
+        if (pauseIcon) pauseIcon.style.display = "none"
+      } else {
+        if (playIcon) playIcon.style.display = "none"
+        if (pauseIcon) pauseIcon.style.display = "block"
+      }
+    }
+
+    video.addEventListener("play", updatePlayPauseIcon)
+    video.addEventListener("pause", updatePlayPauseIcon)
+
+    if (volumeBtn) {
+      volumeBtn.addEventListener("click", () => {
+        video.muted = !video.muted
+        if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume
+      })
+    }
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener("input", (e) => {
+        video.volume = e.target.value
+        video.muted = e.target.value == 0
+      })
+    }
+
+    const updateProgress = () => {
+      if (video.duration && progressFilled && currentTimeSpan) {
+        const progress = (video.currentTime / video.duration) * 100
+        progressFilled.style.width = `${progress}%`
+        currentTimeSpan.textContent = formatTime(video.currentTime)
+      }
+    }
+
+    const updateDuration = () => {
+      if (durationSpan && video.duration) durationSpan.textContent = formatTime(video.duration)
+    }
+
+    video.addEventListener("timeupdate", updateProgress)
+    video.addEventListener("loadedmetadata", updateDuration)
+
+    if (progressBar) {
+      progressBar.addEventListener("click", (e) => {
+        const rect = progressBar.getBoundingClientRect()
+        const pos = (e.clientX - rect.left) / rect.width
+        video.currentTime = pos * video.duration
+      })
+    }
+
+    if (playbackRateSelect) {
+      playbackRateSelect.addEventListener("change", (e) => {
+        video.playbackRate = Number.parseFloat(e.target.value)
+      })
+    }
+
+    if (pipBtn) {
+      pipBtn.addEventListener("click", async () => {
+        try {
+          if (document.pictureInPictureElement) await document.exitPictureInPicture()
+          else await video.requestPictureInPicture()
+        } catch (error) {
+          console.error("PiP error:", error)
         }
+      })
+    }
 
-        const updatePlayPauseIcon = () => {
-            const playIcon = playPauseBtn?.querySelector(".play-icon")
-            const pauseIcon = playPauseBtn?.querySelector(".pause-icon")
-            if (video.paused) {
-                if (playIcon) playIcon.style.display = "block"
-                if (pauseIcon) pauseIcon.style.display = "none"
-            } else {
-                if (playIcon) playIcon.style.display = "none"
-                if (pauseIcon) pauseIcon.style.display = "block"
-            }
+    if (theaterBtn) {
+      theaterBtn.addEventListener("click", () => {
+        containerRef.current?.classList.toggle("theater-mode")
+      })
+    }
+
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener("click", () => {
+        if (document.fullscreenElement) document.exitFullscreen()
+        else containerRef.current?.requestFullscreen()
+      })
+    }
+
+    const handleFullscreenChange = () => {
+      const enterIcon = fullscreenBtn?.querySelector(".fullscreen-enter")
+      const exitIcon = fullscreenBtn?.querySelector(".fullscreen-exit")
+      if (document.fullscreenElement) {
+        if (enterIcon) enterIcon.style.display = "none"
+        if (exitIcon) exitIcon.style.display = "block"
+      } else {
+        if (enterIcon) enterIcon.style.display = "block"
+        if (exitIcon) exitIcon.style.display = "none"
+      }
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+
+    return () => {
+      video.removeEventListener("click", handleVideoClick)
+      video.removeEventListener("play", updatePlayPauseIcon)
+      video.removeEventListener("pause", updatePlayPauseIcon)
+      video.removeEventListener("timeupdate", updateProgress)
+      video.removeEventListener("loadedmetadata", updateDuration)
+      document.removeEventListener("fullscreenchange", handleFullscreenChange)
+    }
+  }, [])
+
+  const addKeyboardShortcuts = useCallback(
+    (video) => {
+      const handleKeyPress = (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return
+        switch (e.key.toLowerCase()) {
+          case " ":
+          case "k":
+            e.preventDefault()
+            video.paused ? video.play() : video.pause()
+            break
+          case "arrowleft":
+            e.preventDefault()
+            video.currentTime -= 10
+            break
+          case "arrowright":
+            e.preventDefault()
+            video.currentTime += 10
+            break
+          case "arrowup":
+            e.preventDefault()
+            video.volume = Math.min(1, video.volume + 0.1)
+            break
+          case "arrowdown":
+            e.preventDefault()
+            video.volume = Math.max(0, video.volume - 0.1)
+            break
+          case "m":
+            e.preventDefault()
+            video.muted = !video.muted
+            break
+          case "f":
+            e.preventDefault()
+            document.fullscreenElement ? document.exitFullscreen() : containerRef.current?.requestFullscreen()
+            break
+          case "p":
+            e.preventDefault()
+            if (enablePictureInPicture) video.requestPictureInPicture().catch(console.error)
+            break
+          case "t":
+            e.preventDefault()
+            containerRef.current?.classList.toggle("theater-mode")
+            break
         }
+      }
 
-        video.addEventListener("play", updatePlayPauseIcon)
-        video.addEventListener("pause", updatePlayPauseIcon)
+      document.addEventListener("keydown", handleKeyPress)
+      return () => document.removeEventListener("keydown", handleKeyPress)
+    },
+    [enablePictureInPicture],
+  )
 
-        if (volumeBtn) {
-            volumeBtn.addEventListener("click", () => {
-                video.muted = !video.muted
-                if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume
-            })
+  const initializePlayer = useCallback(() => {
+    if (!videoRef.current || !containerRef.current) return
+    const video = videoRef.current
+
+    video.src = src
+    if (poster) video.poster = poster
+    else {
+      video.addEventListener("loadeddata", () => {
+        if (!poster) {
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          video.poster = canvas.toDataURL()
         }
+      })
+    }
+    video.controls = false
+    video.autoplay = autoplay
+    video.muted = muted
+    video.loop = loop
+    video.preload = preload
 
-        if (volumeSlider) {
-            volumeSlider.addEventListener("input", (e) => {
-                video.volume = e.target.value
-                video.muted = e.target.value == 0
-            })
-        }
+    const existingControls = containerRef.current.querySelector(".custom-controls")
+    if (existingControls) existingControls.remove()
 
-        const updateProgress = () => {
-            if (video.duration && progressFilled && currentTimeSpan) {
-                const progress = (video.currentTime / video.duration) * 100
-                progressFilled.style.width = `${progress}%`
-                currentTimeSpan.textContent = formatTime(video.currentTime)
-            }
-        }
+    const controlsOverlay = createCustomControls(video)
+    containerRef.current.appendChild(controlsOverlay)
 
-        const updateDuration = () => {
-            if (durationSpan && video.duration) durationSpan.textContent = formatTime(video.duration)
-        }
+    const cleanupControls = addControlsLogic(controlsOverlay, video)
 
-        video.addEventListener("timeupdate", updateProgress)
-        video.addEventListener("loadedmetadata", updateDuration)
+    video.addEventListener("loadedmetadata", onReady)
+    video.addEventListener("play", onPlay)
+    video.addEventListener("pause", onPause)
+    video.addEventListener("ended", onEnded)
 
-        if (progressBar) {
-            progressBar.addEventListener("click", (e) => {
-                const rect = progressBar.getBoundingClientRect()
-                const pos = (e.clientX - rect.left) / rect.width
-                video.currentTime = pos * video.duration
-            })
-        }
+    let cleanupKeyboard
+    if (enableHotkeys) cleanupKeyboard = addKeyboardShortcuts(video)
 
-        if (playbackRateSelect) {
-            playbackRateSelect.addEventListener("change", (e) => { video.playbackRate = Number.parseFloat(e.target.value) })
-        }
+    const cleanupObserver = setupViewportObserver()
 
-        if (pipBtn) {
-            pipBtn.addEventListener("click", async () => {
-                try {
-                    if (document.pictureInPictureElement) await document.exitPictureInPicture()
-                    else await video.requestPictureInPicture()
-                } catch (error) { console.error("PiP error:", error) }
-            })
-        }
+    playerRef.current = video
 
-        if (theaterBtn) {
-            theaterBtn.addEventListener("click", () => { containerRef.current?.classList.toggle("theater-mode") })
-        }
+    return () => {
+      video.removeEventListener("loadedmetadata", onReady)
+      video.removeEventListener("play", onPlay)
+      video.removeEventListener("pause", onPause)
+      video.removeEventListener("ended", onEnded)
+      if (cleanupControls) cleanupControls()
+      if (cleanupKeyboard) cleanupKeyboard()
+      if (cleanupObserver) cleanupObserver()
+    }
+  }, [
+    src,
+    poster,
+    autoplay,
+    muted,
+    loop,
+    preload,
+    onReady,
+    onPlay,
+    onPause,
+    onEnded,
+    enableHotkeys,
+    createCustomControls,
+    addControlsLogic,
+    addKeyboardShortcuts,
+    setupViewportObserver,
+  ])
 
-        if (fullscreenBtn) {
-            fullscreenBtn.addEventListener("click", () => {
-                if (document.fullscreenElement) document.exitFullscreen()
-                else containerRef.current?.requestFullscreen()
-            })
-        }
+  useEffect(() => {
+    const cleanup = initializePlayer()
+    return cleanup
+  }, [initializePlayer])
 
-        const handleFullscreenChange = () => {
-            const enterIcon = fullscreenBtn?.querySelector(".fullscreen-enter")
-            const exitIcon = fullscreenBtn?.querySelector(".fullscreen-exit")
-            if (document.fullscreenElement) {
-                if (enterIcon) enterIcon.style.display = "none"
-                if (exitIcon) exitIcon.style.display = "block"
-            } else {
-                if (enterIcon) enterIcon.style.display = "block"
-                if (exitIcon) exitIcon.style.display = "none"
-            }
-        }
-
-        document.addEventListener("fullscreenchange", handleFullscreenChange)
-
-        return () => {
-            video.removeEventListener("play", updatePlayPauseIcon)
-            video.removeEventListener("pause", updatePlayPauseIcon)
-            video.removeEventListener("timeupdate", updateProgress)
-            video.removeEventListener("loadedmetadata", updateDuration)
-            document.removeEventListener("fullscreenchange", handleFullscreenChange)
-        }
-    }, [])
-
-    const addKeyboardShortcuts = useCallback((video) => {
-        const handleKeyPress = (e) => {
-            if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return
-            switch (e.key.toLowerCase()) {
-                case " ": case "k": e.preventDefault(); video.paused ? video.play() : video.pause(); break
-                case "arrowleft": e.preventDefault(); video.currentTime -= 10; break
-                case "arrowright": e.preventDefault(); video.currentTime += 10; break
-                case "arrowup": e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); break
-                case "arrowdown": e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); break
-                case "m": e.preventDefault(); video.muted = !video.muted; break
-                case "f": e.preventDefault(); document.fullscreenElement ? document.exitFullscreen() : containerRef.current?.requestFullscreen(); break
-                case "p": e.preventDefault(); if (enablePictureInPicture) video.requestPictureInPicture().catch(console.error); break
-                case "t": e.preventDefault(); containerRef.current?.classList.toggle("theater-mode"); break
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyPress)
-        return () => document.removeEventListener("keydown", handleKeyPress)
-    }, [enablePictureInPicture])
-
-    const initializePlayer = useCallback(() => {
-        if (!videoRef.current || !containerRef.current) return
-        const video = videoRef.current
-
-        video.src = src
-        if (poster) video.poster = poster
-        else {
-            video.addEventListener("loadeddata", () => {
-                if (!poster) {
-                    const canvas = document.createElement("canvas")
-                    const ctx = canvas.getContext("2d")
-                    canvas.width = video.videoWidth
-                    canvas.height = video.videoHeight
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-                    video.poster = canvas.toDataURL()
-                }
-            })
-        }
-        video.controls = false
-        video.autoplay = autoplay
-        video.muted = muted
-        video.loop = loop
-        video.preload = preload
-
-        const existingControls = containerRef.current.querySelector(".custom-controls")
-        if (existingControls) existingControls.remove()
-
-        const controlsOverlay = createCustomControls(video)
-        containerRef.current.appendChild(controlsOverlay)
-
-        const cleanupControls = addControlsLogic(controlsOverlay, video)
-
-        video.addEventListener("loadedmetadata", onReady)
-        video.addEventListener("play", onPlay)
-        video.addEventListener("pause", onPause)
-        video.addEventListener("ended", onEnded)
-
-        let cleanupKeyboard
-        if (enableHotkeys) cleanupKeyboard = addKeyboardShortcuts(video)
-
-        playerRef.current = video
-
-        return () => {
-            video.removeEventListener("loadedmetadata", onReady)
-            video.removeEventListener("play", onPlay)
-            video.removeEventListener("pause", onPause)
-            video.removeEventListener("ended", onEnded)
-            if (cleanupControls) cleanupControls()
-            if (cleanupKeyboard) cleanupKeyboard()
-        }
-    }, [src, poster, autoplay, muted, loop, preload, onReady, onPlay, onPause, onEnded, enableHotkeys, createCustomControls, addControlsLogic, addKeyboardShortcuts])
-
-    useEffect(() => {
-        const cleanup = initializePlayer()
-        return cleanup
-    }, [initializePlayer])
-
-    const cssStyles = `
+  const cssStyles = `
         .videojs-player-container { --primary-color: #1877f2; --control-bg: rgba(0, 0, 0, 0.7); --control-hover: rgba(255, 255, 255, 0.1); position: relative; background-color: #000; border-radius: 8px; overflow: hidden; }
-        .videojs-player { width: 100%; height: 100%; object-fit: contain; }
+        .videojs-player { width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
         .custom-controls { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, var(--control-bg)); padding: 20px 16px 16px; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
         .videojs-player-container:hover .custom-controls, .custom-controls:hover { opacity: 1; pointer-events: all; }
         .video-progress-container { margin-bottom: 12px; }
@@ -275,14 +421,18 @@ export const VideoJSPlayer = ({
         }
     `
 
-    return (
-        <>
-            <style dangerouslySetInnerHTML={{ __html: cssStyles }} />
-            <div ref={containerRef} className={`videojs-player-container ${className}`} style={{ width: width, height: height, ...style }}>
-                <video ref={videoRef} className="videojs-player" playsInline crossOrigin="anonymous" />
-            </div>
-        </>
-    )
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: cssStyles }} />
+      <div
+        ref={containerRef}
+        className={`videojs-player-container ${className}`}
+        style={{ width: width, height: height, ...style }}
+      >
+        <video ref={videoRef} className="videojs-player" playsInline crossOrigin="anonymous" />
+      </div>
+    </>
+  )
 }
 
 export default VideoJSPlayer

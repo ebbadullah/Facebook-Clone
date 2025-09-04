@@ -31,7 +31,14 @@ export const likePost = createAsyncThunk(
         try {
             const response = await postService.likePost(postId);
             const { user } = getState().auth;
-            return { postId, userId: user?._id, user, ...response.data };
+            
+            return { 
+                postId, 
+                userId: user?._id, 
+                user, 
+                data: response.data.data, // Fixed: directly access response.data.data
+                isLiked: response.data.data.isLiked
+            };
         } catch (error) {
             return rejectWithValue(error.response.data);
         }
@@ -69,6 +76,30 @@ export const commentOnPost = createAsyncThunk(
     }
 );
 
+export const deletePost = createAsyncThunk(
+    "posts/delete",
+    async (postId, { rejectWithValue }) => {
+        try {
+            const response = await postService.deletePost(postId);
+            return { postId, ...response.data };
+        } catch (error) {
+            return rejectWithValue(error.response.data);
+        }
+    }
+);
+
+export const updatePost = createAsyncThunk(
+    "posts/update",
+    async ({ postId, caption }, { rejectWithValue }) => {
+        try {
+            const response = await postService.updatePost(postId, caption);
+            return { postId, caption, ...response.data };
+        } catch (error) {
+            return rejectWithValue(error.response.data);
+        }
+    }
+);
+
 const initialState = {
     posts: [],
     isLoading: false,
@@ -82,6 +113,14 @@ const postSlice = createSlice({
     reducers: {
         clearError: (state) => {
             state.error = null;
+        },
+        updatePostLikes: (state, action) => {
+            const { postId, likes, isLiked } = action.payload;
+            const post = state.posts.find((p) => p._id === postId);
+            if (post) {
+                post.likes = likes;
+                post.isLiked = isLiked;
+            }
         },
     },
     extraReducers: (builder) => {
@@ -114,33 +153,42 @@ const postSlice = createSlice({
                 state.error = action.payload.message;
             })
 
-            // Like Post
+            // Like Post - FIXED
             .addCase(likePost.fulfilled, (state, action) => {
-                const post = state.posts.find((p) => p._id === action.payload.postId);
-                if (post) {
-                    const userId = action.payload.userId;
-                    const userIndex = post.likes.findIndex(like =>
-                        typeof like === 'string' ? like === userId : like._id === userId
-                    );
-
-                    if (userIndex !== -1) {
-                        post.likes.splice(userIndex, 1);
-                    } else {
-                        const { user } = action.payload;
-                        if (user) {
-                            post.likes.push({
-                                _id: user._id,
-                                name: user.name,
-                                username: user.username,
-                                ProfilePicture: user.ProfilePicture
-                            });
-                        }
-                    }
-
+                const { postId, data } = action.payload;
+                const post = state.posts.find((p) => p._id === postId);
+                
+                if (post && data) {
+                    // Update the post likes with the data from backend
+                    post.likes = data.likes;
+                    // Add isLiked property to track user's like status
+                    post.isLiked = data.isLiked;
+                    
+                    // Force re-render by creating new array reference
                     post.likes = [...post.likes];
                 }
             })
             .addCase(likePost.rejected, (state, action) => {
+                state.error = action.payload.message;
+            })
+
+            // Delete Post
+            .addCase(deletePost.fulfilled, (state, action) => {
+                const postId = action.payload.postId;
+                state.posts = state.posts.filter((p) => p._id !== postId);
+            })
+            .addCase(deletePost.rejected, (state, action) => {
+                state.error = action.payload.message;
+            })
+
+            // Update Post
+            .addCase(updatePost.fulfilled, (state, action) => {
+                const post = state.posts.find((p) => p._id === action.payload.postId);
+                if (post) {
+                    post.caption = action.payload.caption;
+                }
+            })
+            .addCase(updatePost.rejected, (state, action) => {
                 state.error = action.payload.message;
             })
 
@@ -159,5 +207,5 @@ const postSlice = createSlice({
     },
 });
 
-export const { clearError } = postSlice.actions;
+export const { clearError, updatePostLikes } = postSlice.actions;
 export default postSlice.reducer;

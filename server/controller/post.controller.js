@@ -36,27 +36,55 @@ let likeDislike = async (req, res) => {
         let postId = req.params.id
         if (!userId || !postId) return res.status(400).json({ status: false, message: "user id or post id is required" })
         
-        let [author, post_Id] = await Promise.all([user.findById(userId), post.findById(postId)])
-        if (!author || !post_Id) return res.status(404).json({ status: false, message: "user or post not found" })
+        let [author, postDoc] = await Promise.all([user.findById(userId), post.findById(postId)])
+        if (!author || !postDoc) return res.status(404).json({ status: false, message: "user or post not found" })
         
-        let isLike = await post_Id.likes.includes(userId)
-        if (isLike) {
-            await post.updateOne({ $pull: { likes: userId } })
-            await author.save()
-            return res.status(200).json({ status: true, message: "post disliked" })
-        } else {
-            await post.updateOne({ $push: { likes: userId } })
-            await author.save()
+        let isLiked = postDoc.likes.includes(userId)
+        
+        if (isLiked) {
+            // Unlike the post - remove user from likes array
+            postDoc.likes.pull(userId);
+            await postDoc.save();
             
-            if (post_Id.author.toString() !== userId) {
+            // Return updated post data
+            const updatedPost = await post.findById(postId).populate("likes", "name username ProfilePicture")
+            return res.status(200).json({ 
+                status: true, 
+                message: "post disliked",
+                data: { 
+                    postId, 
+                    isLiked: false, 
+                    likes: updatedPost.likes,
+                    likesCount: updatedPost.likes.length
+                }
+            })
+        } else {
+            // Like the post - add user to likes array
+            postDoc.likes.push(userId);
+            await postDoc.save();
+            
+            // Create notification if not liking own post
+            if (postDoc.author.toString() !== userId) {
                 const { createNotification } = await import("./notification.controller.js")
-                await createNotification(post_Id.author, userId, "like", { post: postId })
+                await createNotification(postDoc.author, userId, "like", { post: postId })
             }
             
-            return res.status(200).json({ status: true, message: "post liked" })
+            // Return updated post data
+            const updatedPost = await post.findById(postId).populate("likes", "name username ProfilePicture")
+            return res.status(200).json({ 
+                status: true, 
+                message: "post liked",
+                data: { 
+                    postId, 
+                    isLiked: true, 
+                    likes: updatedPost.likes,
+                    likesCount: updatedPost.likes.length
+                }
+            })
         }
     } catch (error) {
-        res.status(500).json({ status: false, message: "internal sever error", error: error.message })
+        console.error("Like/dislike error:", error)
+        res.status(500).json({ status: false, message: "internal server error", error: error.message })
     }
 }
 
@@ -65,9 +93,21 @@ let getAllPosts = async (req, res) => {
         let userId = req.userId
         if (!userId) return res.status(400).json({ status: false, message: "User ID is required" })
         
-        let allPosts = await post.find().populate("author", "name username ProfilePicture").populate("likes", "name username ProfilePicture").populate("comments", "comment author").sort({ createdAt: -1 })
+        let allPosts = await post.find()
+            .populate("author", "name username ProfilePicture")
+            .populate("likes", "name username ProfilePicture")
+            .populate({
+                path: "comments",
+                populate: {
+                    path: "author",
+                    select: "name username ProfilePicture"
+                }
+            })
+            .sort({ createdAt: -1 })
+        
         res.status(200).json({ status: true, message: "Posts fetched successfully", posts: allPosts })
     } catch (error) {
+        console.error("Get all posts error:", error)
         res.status(500).json({ status: false, message: "Internal server error", error: error.message })
     }
 }
@@ -90,6 +130,7 @@ let bookmarkPost = async (req, res) => {
             return res.status(200).json({ status: true, message: "Post added to bookmarks" })
         }
     } catch (error) {
+        console.error("Bookmark error:", error)
         res.status(500).json({ status: false, message: "Internal server error", error: error.message })
     }
 }
@@ -106,7 +147,10 @@ let postComment = async (req, res) => {
         
         let newComment = new comment({ comment: commentText, post: postId, author: userId })
         await newComment.save()
-        await post.updateOne({ _id: postId }, { $push: { comments: newComment._id } })
+        
+        // Add comment to post and save
+        findPost.comments.push(newComment._id);
+        await findPost.save();
         
         if (findPost.author.toString() !== userId) {
             const { createNotification } = await import("./notification.controller.js")
@@ -116,6 +160,7 @@ let postComment = async (req, res) => {
         const populatedComment = await comment.findById(newComment._id).populate("author", "name username ProfilePicture")
         res.status(201).json({ status: true, message: "Comment added successfully", comment: populatedComment })
     } catch (error) {
+        console.error("Comment error:", error)
         res.status(500).json({ status: false, message: "Internal server error", error: error.message })
     }
 }
@@ -135,6 +180,7 @@ let deletePost = async (req, res) => {
         await post.deleteOne({ _id: postId })
         res.status(200).json({ status: true, message: "Post deleted successfully" })
     } catch (error) {
+        console.error("Delete post error:", error)
         res.status(500).json({ status: false, message: "Internal server error", error: error.message })
     }
 }
@@ -151,9 +197,12 @@ let updatePost = async (req, res) => {
         
         if (findPost.author.toString() !== userId) return res.status(403).json({ status: false, message: "You can only update your own posts" })
         
-        let updatedPost = await post.findByIdAndUpdate(postId, { caption }, { new: true })
-        res.status(200).json({ status: true, message: "Post updated successfully", post: updatedPost })
+        findPost.caption = caption;
+        await findPost.save();
+        
+        res.status(200).json({ status: true, message: "Post updated successfully", post: findPost })
     } catch (error) {
+        console.error("Update post error:", error)
         res.status(500).json({ status: false, message: "Internal server error", error: error.message })
     }
 }
@@ -168,16 +217,30 @@ let sharePost = async (req, res) => {
         let [findUser, originalPost] = await Promise.all([user.findById(userId), post.findById(postId).populate("author", "name username ProfilePicture")])
         if (!findUser || !originalPost) return res.status(404).json({ status: false, message: "User or Post not found" })
         
-        let sharedPost = await post.create({ media_url: originalPost.media_url, caption: caption || `Shared: ${originalPost.caption}`, media_type: originalPost.media_type, author: userId, originalPost: postId, isShared: true })
+        let sharedPost = await post.create({ 
+            media_url: originalPost.media_url, 
+            caption: caption || `Shared: ${originalPost.caption}`, 
+            media_type: originalPost.media_type, 
+            author: userId, 
+            originalPost: postId, 
+            isShared: true 
+        })
+        
         await user.findByIdAndUpdate(userId, { $push: { posts: sharedPost._id } })
-        await post.findByIdAndUpdate(postId, { $push: { shares: userId } })
+        
+        // Add share to original post
+        originalPost.shares.push(userId);
+        await originalPost.save();
         
         if (originalPost.author._id.toString() !== userId) {
             const { createNotification } = await import("./notification.controller.js")
             await createNotification(originalPost.author._id, userId, "share", { post: postId })
         }
         
-        const populatedSharedPost = await post.findById(sharedPost._id).populate("author", "name username ProfilePicture").populate("originalPost", "caption media_url author")
+        const populatedSharedPost = await post.findById(sharedPost._id)
+            .populate("author", "name username ProfilePicture")
+            .populate("originalPost", "caption media_url author")
+        
         res.status(201).json({ status: true, message: "Post shared successfully", data: populatedSharedPost })
     } catch (error) {
         console.error("Error sharing post:", error)
@@ -217,7 +280,19 @@ let getUserPosts = async (req, res) => {
             default: break
         }
         
-        let posts = await post.find(query).populate("author", "name username ProfilePicture").populate("originalPost", "caption media_url author").populate("likes", "name username ProfilePicture").populate("comments", "content author").sort({ createdAt: -1 })
+        let posts = await post.find(query)
+            .populate("author", "name username ProfilePicture")
+            .populate("originalPost", "caption media_url author")
+            .populate("likes", "name username ProfilePicture")
+            .populate({
+                path: "comments",
+                populate: {
+                    path: "author",
+                    select: "name username ProfilePicture"
+                }
+            })
+            .sort({ createdAt: -1 })
+        
         res.status(200).json({ status: true, data: posts })
     } catch (error) {
         console.error("Error getting user posts:", error)

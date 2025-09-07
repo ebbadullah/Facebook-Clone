@@ -38,6 +38,11 @@ const userService = {
     getUserFriends: () => {
         return api.get("/users/friends")
     },
+
+    // Search users
+    searchUsers: (query) => {
+        return api.get(`/users/search?query=${query}`)
+    },
 }
 
 export default userService

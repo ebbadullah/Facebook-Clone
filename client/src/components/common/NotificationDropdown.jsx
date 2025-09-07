@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Badge, IconButton, Menu, MenuItem, Typography, Box, Avatar, Button, Chip } from "@mui/material"
-import { Notifications as NotificationsIcon, Favorite, Comment, PersonAdd, Share, MarkEmailRead } from "@mui/icons-material"
+import { Notifications as NotificationsIcon, Favorite, Comment, PersonAdd, Share, MarkEmailRead, MarkEmailUnread, Drafts } from "@mui/icons-material"
 import { toast } from "react-toastify"
 import { fetchNotifications, markNotificationAsRead, markAllNotificationsAsRead, getUnreadNotificationCount } from "../../store/slices/notificationSlice"
 
@@ -109,10 +109,21 @@ const NotificationDropdown = () => {
                                     </Box>
                                     <Box sx={{ flex: 1, minWidth: 0 }}>
                                         <Typography variant="body2" sx={{ fontWeight: !notification.isRead ? 600 : 400, color: "#1c1e21", lineHeight: 1.4, mb: 0.5 }}>{notification.message}</Typography>
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                            <Typography variant="caption" sx={{ color: "#65676b", fontSize: "12px" }}>{formatTimeAgo(notification.createdAt)}</Typography>
-                                            {!notification.isRead && <Chip label="New" size="small" sx={{ height: 16, fontSize: "10px", backgroundColor: "#1877f2", color: "white", fontWeight: 600 }} />}
+                                        {!notification.isRead && (
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                                                <Chip label="New" size="small" sx={{ height: 16, fontSize: "10px", backgroundColor: "#1877f2", color: "white", fontWeight: 600 }} />
+                                            </Box>
+                                        )}
+                                    </Box>
+                                    <Box sx={{ ml: 1, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", height: "100%" }}>
+                                        <Box>
+                                            {notification.isRead ? (
+                                                <MarkEmailRead sx={{ fontSize: "18px", color: "#4caf50" }} />
+                                            ) : (
+                                                <Drafts sx={{ fontSize: "18px", color: "#f44336" }} />
+                                            )}
                                         </Box>
+                                        <Typography variant="caption" sx={{ color: "#65676b", fontSize: "11px", mt: 0.5, textAlign: "right" }}>{formatTimeAgo(notification.createdAt)}</Typography>
                                     </Box>
                                 </Box>
                             </MenuItem>

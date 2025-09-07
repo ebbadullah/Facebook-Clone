@@ -27,6 +27,16 @@ const PostCard = ({ post }) => {
 
     const mediaItems = Array.isArray(post.media) && post.media.length > 0
         ? post.media.map((m) => ({ url: m.url, type: m.type, caption: m.caption || post.caption, alt: m.alt || `Media from ${post.author?.name}`, poster: m.poster }))
+        : Array.isArray(post.media_url) && post.media_url.length > 0
+            ? post.media_url.map((url, index) => ({
+                url,
+                type: Array.isArray(post.media_type) && post.media_type[index] 
+                    ? post.media_type[index] 
+                    : (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url) ? "video" : "image"),
+                caption: post.caption,
+                alt: `Post by ${post.author?.name}`,
+                poster: post.media_poster
+            }))
         : post.media_url
             ? [{ url: post.media_url, type: post.media_type || (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(post.media_url) ? "video" : "image"), caption: post.caption, alt: `Post by ${post.author?.name}`, poster: post.media_poster }]
             : []
@@ -190,15 +200,166 @@ const PostCard = ({ post }) => {
 
             {mediaItems.length > 0 && (
                 <Box sx={{ mb: 1 }}>
-                    {videoItems.map((video, index) => (
-                        <Box key={`video-${index}`} sx={{ mb: imageItems.length > 0 ? 2 : 0 }}>
-                            <VideoJSPlayer src={video.url} poster={video.poster} className="post-video-player" style={{ minHeight: "300px", maxHeight: "500px", borderRadius: "0px" }} onReady={() => { }} onPlay={() => { }} onPause={() => { }} controls={true} preload="metadata" playbackRates={[0.5, 0.75, 1, 1.25, 1.5, 2]} enableHotkeys={true} enableFullscreen={true} enablePictureInPicture={true} enableTheater={true} responsive={true} fluid={true} />
+                    {/* Single media item - show full size */}
+                    {mediaItems.length === 1 ? (
+                        videoItems.length === 1 ? (
+                            <Box sx={{ mb: 0 }}>
+                                <VideoJSPlayer 
+                                    src={videoItems[0].url} 
+                                    poster={videoItems[0].poster} 
+                                    className="post-video-player" 
+                                    style={{ minHeight: "300px", maxHeight: "500px", borderRadius: "0px" }} 
+                                    onReady={() => { }} 
+                                    onPlay={() => { }} 
+                                    onPause={() => { }} 
+                                    controls={true} 
+                                    preload="metadata" 
+                                    playbackRates={[0.5, 0.75, 1, 1.25, 1.5, 2]} 
+                                    enableHotkeys={true} 
+                                    enableFullscreen={true} 
+                                    enablePictureInPicture={true} 
+                                    enableTheater={true} 
+                                    responsive={true} 
+                                    fluid={true} 
+                                />
+                            </Box>
+                        ) : (
+                            <GalleryViewer 
+                                items={imageItems} 
+                                settings={{ 
+                                    showThumbByDefault: false, 
+                                    counter: false, 
+                                    download: true, 
+                                    zoom: true, 
+                                    actualSize: true, 
+                                    showZoomInOutIcons: true, 
+                                    rotate: true, 
+                                    flipHorizontal: true, 
+                                    flipVertical: true, 
+                                    showCloseIcon: true, 
+                                    closable: true, 
+                                    escKey: true, 
+                                    mode: "lg-fade", 
+                                    speed: 400, 
+                                    addClass: "lg-custom-gallery", 
+                                    selector: ".gallery-item" 
+                                }} 
+                                className="post-gallery" 
+                                style={{ minHeight: "400px", maxHeight: "600px" }} 
+                                onOpened={() => { }} 
+                            />
+                        )
+                    ) : (
+                        /* Multiple media items - show grid view */
+                        <Box sx={{ display: "grid", gridTemplateColumns: mediaItems.length === 2 ? "1fr 1fr" : mediaItems.length >= 3 ? "1fr 1fr 1fr" : "1fr", gap: 1 }}>
+                            {mediaItems.slice(0, mediaItems.length > 5 ? 5 : mediaItems.length).map((media, index) => (
+                                <Box 
+                                    key={`media-${index}`} 
+                                    sx={{ 
+                                        position: "relative",
+                                        height: mediaItems.length === 2 ? "300px" : "200px",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                        cursor: "pointer"
+                                    }}
+                                    onClick={() => {
+                                        // Handle click to open gallery or video player
+                                        const galleryElement = document.querySelector(".gallery-item");
+                                        if (galleryElement) {
+                                            galleryElement.click();
+                                        }
+                                    }}
+                                >
+                                    {media.type === "video" ? (
+                                        <Box 
+                                            sx={{ 
+                                                width: "100%", 
+                                                height: "100%", 
+                                                backgroundImage: `url(${media.poster || ""})`,
+                                                backgroundSize: "cover",
+                                                backgroundPosition: "center",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center"
+                                            }}
+                                        >
+                                            <IconButton 
+                                                sx={{ 
+                                                    backgroundColor: "rgba(0,0,0,0.5)", 
+                                                    color: "white",
+                                                    "&:hover": { backgroundColor: "rgba(0,0,0,0.7)" }
+                                                }}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                                    <path d="M8 5v14l11-7z"/>
+                                                </svg>
+                                            </IconButton>
+                                        </Box>
+                                    ) : (
+                                        <img 
+                                            src={media.url} 
+                                            alt={media.alt || `Media ${index + 1}`} 
+                                            style={{ 
+                                                width: "100%", 
+                                                height: "100%", 
+                                                objectFit: "cover" 
+                                            }} 
+                                            className="gallery-item"
+                                        />
+                                    )}
+                                    
+                                    {/* Show +X overlay for the last visible item if there are more than 5 */}
+                                    {mediaItems.length > 5 && index === 4 && (
+                                        <Box 
+                                            sx={{ 
+                                                position: "absolute", 
+                                                top: 0, 
+                                                left: 0, 
+                                                width: "100%", 
+                                                height: "100%", 
+                                                backgroundColor: "rgba(0,0,0,0.5)",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                color: "white",
+                                                fontSize: "24px",
+                                                fontWeight: "bold"
+                                            }}
+                                        >
+                                            +{mediaItems.length - 5}
+                                        </Box>
+                                    )}
+                                </Box>
+                            ))}
                         </Box>
-                    ))}
-
-                    {imageItems.length > 0 && (
-                        <GalleryViewer items={imageItems} settings={{ showThumbByDefault: imageItems.length > 1, counter: imageItems.length > 1, download: true, zoom: true, actualSize: true, showZoomInOutIcons: true, rotate: true, flipHorizontal: true, flipVertical: true, showCloseIcon: true, closable: true, escKey: true, mode: "lg-fade", speed: 400, addClass: "lg-custom-gallery", selector: ".gallery-item" }} className="post-gallery" style={{ minHeight: "400px", maxHeight: "600px" }} onOpened={() => { }} />
                     )}
+                    
+                    <Box sx={{ display: "none" }}>
+                        <GalleryViewer 
+                            items={mediaItems} 
+                            settings={{ 
+                                showThumbByDefault: mediaItems.length > 1, 
+                                counter: mediaItems.length > 1, 
+                                download: true, 
+                                zoom: true, 
+                                actualSize: true, 
+                                showZoomInOutIcons: true, 
+                                rotate: true, 
+                                flipHorizontal: true, 
+                                flipVertical: true, 
+                                showCloseIcon: true, 
+                                closable: true, 
+                                escKey: true, 
+                                mode: "lg-fade", 
+                                speed: 400, 
+                                addClass: "lg-custom-gallery", 
+                                selector: ".gallery-item" 
+                            }} 
+                            className="post-gallery-hidden" 
+                            onOpened={() => { }} 
+                        />
+                    </Box>
+                    
                 </Box>
             )}
 

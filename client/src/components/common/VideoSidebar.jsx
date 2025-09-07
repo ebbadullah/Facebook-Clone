@@ -1,6 +1,14 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { HomeIcon, TheatersIcon, LiveTvIcon, SportsEsportsIcon, SportsSoccerIcon, MusicNoteIcon, ArticleIcon, TheaterComedyIcon, SearchIcon } from '@mui/icons-material'
+import HomeIcon from '@mui/icons-material/Home'
+import TheatersIcon from '@mui/icons-material/Theaters'
+import LiveTvIcon from '@mui/icons-material/LiveTv'
+import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
+import SportsSoccerIcon from '@mui/icons-material/SportsSoccer'
+import MusicNoteIcon from '@mui/icons-material/MusicNote'
+import ArticleIcon from '@mui/icons-material/Article'
+import TheaterComedyIcon from '@mui/icons-material/TheaterComedy'
+import SearchIcon from '@mui/icons-material/Search'
 
 const VideoSidebar = ({ onSearch }) => {
     const [searchInput, setSearchInput] = useState("")
@@ -18,12 +26,12 @@ const VideoSidebar = ({ onSearch }) => {
 
     const navigationItems = [
         { name: "Home", icon: <HomeIcon />, path: "/" },
-        { name: "Reels", icon: <TheatersIcon />, path: "/reels" },
-        { name: "Live", icon: <LiveTvIcon />, path: "/live" },
-        { name: "Gaming", icon: <SportsEsportsIcon />, path: "/gaming" },
-        { name: "Sports", icon: <SportsSoccerIcon />, path: "/sports" },
-        { name: "Music", icon: <MusicNoteIcon />, path: "/music" },
-        { name: "News", icon: <ArticleIcon />, path: "/news" },
+        { name: "Reels", icon: <TheatersIcon />, path: "/video" },
+        { name: "Live", icon: <LiveTvIcon />, path: "/video" },
+        { name: "Gaming", icon: <SportsEsportsIcon />, path: "/video" },
+        { name: "Sports", icon: <SportsSoccerIcon />, path: "/video" },
+        { name: "Music", icon: <MusicNoteIcon />, path: "/video" },
+        { name: "News", icon: <ArticleIcon />, path: "/video" },
         { name: "Entertainment", icon: <TheaterComedyIcon />, path: "/entertainment" },
     ]
 
@@ -43,7 +51,7 @@ const VideoSidebar = ({ onSearch }) => {
                     </button>
                 </form>
             </div>
-
+   
             <div className="p-4">
                 <nav className="space-y-2">
                     {navigationItems.map((item) => (

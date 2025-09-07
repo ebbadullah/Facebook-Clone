@@ -5,6 +5,7 @@ import { AppBar, Toolbar, Box, IconButton, Avatar, Menu, MenuItem, Badge, InputB
 import { Home, People, OndemandVideo, Storefront, SportsEsports, Search, Message, ArrowDropDown, Settings, HelpOutline, Logout, Menu as MenuIcon } from "@mui/icons-material"
 import { logoutUser } from "../../store/slices/authSlice"
 import NotificationDropdown from "./NotificationDropdown"
+import SearchBar from "./SearchBar"
 
 const Header = ({ onMobileMenuToggle }) => {
     const dispatch = useDispatch()
@@ -69,9 +70,8 @@ const Header = ({ onMobileMenuToggle }) => {
                             facebook
                         </Typography>
 
-                        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", backgroundColor: "#f0f2f5", borderRadius: "50px", px: 2, py: 1, ml: 2, width: { md: "200px", lg: "240px" }, transition: "all 0.2s ease", "&:hover": { backgroundColor: "#e4e6ea" } }}>
-                            <Search sx={{ color: "#65676b", mr: 1, fontSize: "20px" }} />
-                            <InputBase placeholder="Search Facebook" sx={{ flex: 1, color: "#1c1e21", fontSize: "15px", "& input::placeholder": { color: "#65676b", opacity: 1 } }} />
+                        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", ml: 2, width: { md: "200px", lg: "240px" } }}>
+                            <SearchBar />
                         </Box>
                     </Box>
 
@@ -145,10 +145,7 @@ const Header = ({ onMobileMenuToggle }) => {
 
             <Drawer anchor="top" open={mobileSearchOpen} onClose={() => setMobileSearchOpen(false)} PaperProps={{ sx: { backgroundColor: "white", borderBottom: "1px solid #e4e6ea", boxShadow: "none" } }}>
                 <Box sx={{ p: 2, pt: 8 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", backgroundColor: "#f0f2f5", borderRadius: "50px", px: 2, py: 1.5 }}>
-                        <Search sx={{ color: "#65676b", mr: 1, fontSize: "20px" }} />
-                        <InputBase placeholder="Search Facebook" autoFocus sx={{ flex: 1, color: "#1c1e21", fontSize: "16px", "& input::placeholder": { color: "#65676b", opacity: 1 } }} />
-                    </Box>
+                    <SearchBar />
                 </Box>
             </Drawer>
         </>

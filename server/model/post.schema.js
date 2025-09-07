@@ -4,9 +4,11 @@ let postSchema = new mongoose.Schema(
     {
         caption: { type: String, required: true },
 
-        media_url: { type: String, required: true },
+        media_url: { type: [String], required: true },
 
-        media_type: { type: String, enum: ["image", "video"], required: true },
+        media_type: { type: [String], enum: ["image", "video"], required: true },
+        
+        cloudinary_id: { type: [String], required: true },
 
         likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 

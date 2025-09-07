@@ -339,7 +339,6 @@ let getUserFriends = async (req, res) => {
         const userId = req.userId
         const userData = await user.findById(userId).populate("following", "name username ProfilePicture followers").select("following")
         
-        // Filter to show only mutual friends (users who follow each other)
         const friends = userData.following.filter(friend => 
             friend.followers && friend.followers.includes(userId)
         )
@@ -351,4 +350,24 @@ let getUserFriends = async (req, res) => {
     }
 }
 
-export { register, verifyOTP, login, logout, checkAuthentication, getUser, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, getUserFriends }
+let searchUsers = async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) return res.status(400).json({ status: false, message: "Search query is required" });
+        
+        const searchResults = await user.find({
+            $or: [
+                { name: { $regex: query, $options: 'i' } },
+                { username: { $regex: query, $options: 'i' } }
+            ],
+            _id: { $ne: req.userId } // Exclude current user
+        }).select("name username ProfilePicture").limit(10);
+        
+        res.status(200).json({ status: true, data: searchResults });
+    } catch (error) {
+        console.error("Error searching users:", error);
+        res.status(500).json({ status: false, message: "Internal server error", error: error.message });
+    }
+};
+
+export { register, verifyOTP, login, logout, checkAuthentication, getUser, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, getUserFriends, searchUsers }

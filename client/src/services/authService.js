@@ -12,7 +12,6 @@ const authService = {
     login: (credentials) => {
         return api.post("/users/login", credentials)
     },
-
     logout: () => {
         return api.get("/users/logout")
     },

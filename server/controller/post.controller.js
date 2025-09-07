@@ -8,18 +8,42 @@ let postCreate = async (req, res) => {
     try {
         let userId = req.userId
         let { caption } = req.body
-        let file = req.file
-        if (!file || !caption) return res.status(400).json({ status: false, message: "Media file and caption are required" })
+        let files = req.files
+        
+        if (!files || files.length === 0 || !caption) {
+            return res.status(400).json({ status: false, message: "Media files and caption are required" })
+        }
+        
         if (!userId) return res.status(401).json({ status: false, message: "Unauthorized - Please login first" })
         
         let findUser = await user.findById(userId)
         if (!findUser) return res.status(404).json({ status: false, message: "User not found" })
         
-        let cloudResponse
-        if (file.mimetype.startsWith("video")) cloudResponse = await uploadToCloudinary(file.path, "post/video")
-        else cloudResponse = await uploadToCloudinary(file.path, "post/image")
+        const mediaUrls = []
+        const cloudinaryIds = []
+        const mediaTypes = []
         
-        let newPost = await post.create({ media_url: cloudResponse.secure_url, caption, media_type: file.mimetype.split("/")[0], author: userId, cloudinary_id: cloudResponse.public_id })
+        for (const file of files) {
+            let cloudResponse
+            if (file.mimetype.startsWith("video")) {
+                cloudResponse = await uploadToCloudinary(file.path, "post/video")
+            } else {
+                cloudResponse = await uploadToCloudinary(file.path, "post/image")
+            }
+            
+            mediaUrls.push(cloudResponse.secure_url)
+            cloudinaryIds.push(cloudResponse.public_id)
+            mediaTypes.push(file.mimetype.split("/")[0])
+        }
+        
+        let newPost = await post.create({ 
+            media_url: mediaUrls, 
+            caption, 
+            media_type: mediaTypes, 
+            author: userId, 
+            cloudinary_id: cloudinaryIds 
+        })
+        
         await user.findByIdAndUpdate(userId, { $push: { posts: newPost._id } })
         
         const populatedPost = await post.findById(newPost._id).populate("author", "name username ProfilePicture")
@@ -42,11 +66,9 @@ let likeDislike = async (req, res) => {
         let isLiked = postDoc.likes.includes(userId)
         
         if (isLiked) {
-            // Unlike the post - remove user from likes array
             postDoc.likes.pull(userId);
             await postDoc.save();
             
-            // Return updated post data
             const updatedPost = await post.findById(postId).populate("likes", "name username ProfilePicture")
             return res.status(200).json({ 
                 status: true, 
@@ -59,17 +81,14 @@ let likeDislike = async (req, res) => {
                 }
             })
         } else {
-            // Like the post - add user to likes array
             postDoc.likes.push(userId);
             await postDoc.save();
             
-            // Create notification if not liking own post
             if (postDoc.author.toString() !== userId) {
                 const { createNotification } = await import("./notification.controller.js")
                 await createNotification(postDoc.author, userId, "like", { post: postId })
             }
             
-            // Return updated post data
             const updatedPost = await post.findById(postId).populate("likes", "name username ProfilePicture")
             return res.status(200).json({ 
                 status: true, 
@@ -148,7 +167,6 @@ let postComment = async (req, res) => {
         let newComment = new comment({ comment: commentText, post: postId, author: userId })
         await newComment.save()
         
-        // Add comment to post and save
         findPost.comments.push(newComment._id);
         await findPost.save();
         
@@ -168,6 +186,8 @@ let postComment = async (req, res) => {
 let deletePost = async (req, res) => {
     try {
         let userId = req.userId
+
+        
         let postId = req.params.id
         if (!userId || !postId) return res.status(400).json({ status: false, message: "User ID and Post ID are required" })
         
@@ -228,7 +248,6 @@ let sharePost = async (req, res) => {
         
         await user.findByIdAndUpdate(userId, { $push: { posts: sharedPost._id } })
         
-        // Add share to original post
         originalPost.shares.push(userId);
         await originalPost.save();
         

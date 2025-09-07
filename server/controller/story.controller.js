@@ -42,7 +42,6 @@ export const createStory = async (req, res) => {
     }
 };
 
-// Get stories for feed
 export const getStories = async (req, res) => {
     try {
         const userId = req.userId;
@@ -68,7 +67,6 @@ export const getStories = async (req, res) => {
     }
 };
 
-// Get user's own stories
 export const getUserStories = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -90,7 +88,6 @@ export const getUserStories = async (req, res) => {
     }
 };
 
-// Like/unlike story
 export const toggleStoryLike = async (req, res) => {
     try {
         const { storyId } = req.params;
@@ -104,15 +101,12 @@ export const toggleStoryLike = async (req, res) => {
         const isLiked = story.likes.includes(userId);
 
         if (isLiked) {
-            // Unlike
             story.likes = story.likes.filter(id => id.toString() !== userId);
             await story.save();
         } else {
-            // Like
             story.likes.push(userId);
             await story.save();
 
-            // Create notification if not liking own story
             if (story.author.toString() !== userId) {
                 await createNotification(story.author, userId, "story_like", { story: storyId });
             }
@@ -129,7 +123,6 @@ export const toggleStoryLike = async (req, res) => {
     }
 };
 
-// View story
 export const viewStory = async (req, res) => {
     try {
         const { storyId } = req.params;
@@ -153,7 +146,6 @@ export const viewStory = async (req, res) => {
     }
 };
 
-// Delete story
 export const deleteStory = async (req, res) => {
     try {
         const { storyId } = req.params;

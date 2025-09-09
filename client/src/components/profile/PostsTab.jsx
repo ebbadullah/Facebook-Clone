@@ -66,7 +66,18 @@ const PostsTab = ({ user, isOwnProfile, userPosts, userPhotos, onEditDialog, set
 
                 <Box sx={{ mt: { xs: 1, sm: 2 } }}>
                     {userPosts.length > 0 ? (
-                        userPosts.map((post) => <PostCard key={post._id} post={post} />)
+                        userPosts.map((post) => (
+                            <PostCard
+                                key={post._id}
+                                post={post}
+                                onPostUpdate={(data) => {
+                                    // Optimistically sync reaction/like without full refresh
+                                    post.likes = data.likes
+                                    post.reactions = data.reactions
+                                    post.isLiked = data.isLiked
+                                }}
+                            />
+                        ))
                     ) : (
                         <Card sx={{ p: { xs: 3, sm: 5 }, textAlign: "center", borderRadius: "8px", backgroundColor: "white", boxShadow: "0 2px 4px rgba(0, 0, 0, .1), 0 8px 16px rgba(0, 0, 0, .1)" }}>
                             <Typography variant="h5" sx={{ color: "#65676b", mb: 1, fontSize: { xs: "1.25rem", sm: "1.5rem" } }}>No posts yet</Typography>

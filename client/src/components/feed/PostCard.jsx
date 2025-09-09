@@ -9,8 +9,16 @@ import GalleryViewer from "../../Plugins/LightGallery/Index"
 import VideoJSPlayer from "../../Plugins/VideoJs/Index"
 import { formatPostTime, isCommentAuthor } from "../../utils/helper"
 import "../../../src/index.css"
+import likeSvg from "../../assets/emojis/like.svg"
+import loveSvg from "../../assets/emojis/love.svg"
+// import careSvg from "../../assets/emojis/default_small.png"
+import hahaSvg from "../../assets/emojis/haha.svg"
+import wowSvg from "../../assets/emojis/wow.svg"
+import sadSvg from "../../assets/emojis/sad.svg"
+import angrySvg from "../../assets/emojis/angry.svg"
+// import defaultEmoji from "../../assets/emojis/default.png"
 
-const PostCard = ({ post }) => {
+const PostCard = ({ post, onPostUpdate }) => {
     const dispatch = useDispatch()
     const { user } = useSelector((state) => state.auth)
     const [anchorEl, setAnchorEl] = useState(null)
@@ -55,7 +63,10 @@ const PostCard = ({ post }) => {
             // Toggle like: if already reacted with like -> clear; else set like
             const currentReaction = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id);
             const nextType = currentReaction?.type === 'like' ? null : 'like';
-            await dispatch(setPostReaction({ postId: post._id, type: nextType })).unwrap();
+            const result = await dispatch(setPostReaction({ postId: post._id, type: nextType })).unwrap();
+            if (onPostUpdate && result?.data) {
+                onPostUpdate(result.data)
+            }
         } catch (error) {
             console.error("Reaction error:", error);
             toast.error("Failed to update reaction");
@@ -70,7 +81,10 @@ const PostCard = ({ post }) => {
         try {
             const current = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id)?.type;
             const next = current === type ? null : type;
-            await dispatch(setPostReaction({ postId: post._id, type: next })).unwrap();
+            const result = await dispatch(setPostReaction({ postId: post._id, type: next })).unwrap();
+            if (onPostUpdate && result?.data) {
+                onPostUpdate(result.data)
+            }
         } catch (error) {
             console.error("Reaction error:", error);
             toast.error("Failed to react");
@@ -167,15 +181,15 @@ const PostCard = ({ post }) => {
 
     const myReaction = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id)?.type;
 
-    const getReactionEmoji = (type) => {
+    const getReactionSrc = (type) => {
         switch (type) {
-            case 'like': return '👍';
-            case 'love': return '❤️';
-            case 'care': return '🤗';
-            case 'haha': return '😆';
-            case 'wow': return '😮';
-            case 'sad': return '😢';
-            case 'angry': return '😡';
+            case 'like': return likeSvg;
+            case 'love': return loveSvg;
+            // case 'care': return careSvg; // using provided default_small.png as care icon
+            case 'haha': return hahaSvg;
+            case 'wow': return wowSvg;
+            case 'sad': return sadSvg;
+            case 'angry': return angrySvg;
             default: return null;
         }
     }
@@ -426,8 +440,19 @@ const PostCard = ({ post }) => {
                             )} arrow placement="top">
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, cursor: reactionsCount > 0 ? "pointer" : "default", "&:hover": { opacity: reactionsCount > 0 ? 0.8 : 1 } }} onClick={reactionsCount > 0 ? handleShowLikes : undefined} className="hover-scale">
                                 <Box sx={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: reactionsCount > 0 ? "#f0f2f5" : "#e4e6ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    {getReactionEmoji(myReaction || dominantReaction) ? (
-                                        <span style={{ fontSize: 12 }}>{getReactionEmoji(myReaction || dominantReaction)}</span>
+                                    {getReactionSrc(myReaction || dominantReaction) ? (
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 18,
+                                            height: 18,
+                                            borderRadius: '50%',
+                                            background: 'linear-gradient(145deg, #ffffff, #eef1f6)',
+                                            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.06), 1px 2px 4px rgba(0,0,0,0.08)'
+                                        }}>
+                                            <img src={getReactionSrc(myReaction || dominantReaction) || defaultEmoji} alt="reaction" style={{ width: 14, height: 14 }} />
+                                        </span>
                                     ) : (
                                         <ThumbUp sx={{ fontSize: "12px", color: "#65676b" }} />
                                     )}
@@ -444,23 +469,62 @@ const PostCard = ({ post }) => {
 
             <Box sx={{ display: "flex", justifyContent: "space-around", py: 1, px: 2 }}>
                 <Box onMouseEnter={() => setShowReactions(true)} onMouseLeave={() => setShowReactions(false)} sx={{ position: "relative", flex: 1 }}>
-                    <Button startIcon={isLiked || myReaction ? <ThumbUp /> : <ThumbUpOffAlt />} onClick={handleLike} disabled={isLiking} className={`fb-button ${(isLiked || myReaction) ? "fb-button-primary" : "fb-button-secondary"}`} sx={{ color: (isLiked || myReaction) ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px", width: "100%" }}>
+                    <Button
+                        startIcon={myReaction ? (
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 26,
+                                height: 26,
+                                borderRadius: '50%',
+                                background: 'linear-gradient(145deg, #ffffff, #e6e9ef)',
+                                boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.06), 2px 4px 8px rgba(0,0,0,0.08)'
+                            }}>
+                                <img src={getReactionSrc(myReaction) || undefined} alt={myReaction} style={{ width: 20, height: 20 }} />
+                            </span>
+                        ) : (isLiked ? <ThumbUp /> : <ThumbUpOffAlt />)}
+                        onClick={handleLike}
+                        disabled={isLiking}
+                        className={`fb-button ${(isLiked || myReaction) ? "fb-button-primary" : "fb-button-secondary"}`}
+                        sx={{ color: (isLiked || myReaction) ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px", width: "100%" }}
+                    >
                         {myReaction ? myReaction.charAt(0).toUpperCase() + myReaction.slice(1) : (isLiked ? 'Liked' : 'Like')}
                     </Button>
                     {showReactions && (
-                        <Box sx={{ position: "absolute", bottom: "100%", left: 12, mb: 1, background: "#fff", border: "1px solid #e4e6ea", borderRadius: "28px", boxShadow: "0 8px 16px rgba(0,0,0,0.15)", p: 1, display: "flex", gap: 1, zIndex: 10 }}>
+                        <Box sx={{ position: "absolute", bottom: "100%", left: 12, mb: 1, background: "#fff", border: "1px solid #e4e6ea", borderRadius: "28px", boxShadow: "0 12px 24px rgba(0,0,0,0.15)", p: 1, display: "flex", gap: 1.2, zIndex: 10 }}>
                             {[
-                                { k: 'like', label: '👍' },
-                                { k: 'love', label: '❤️' },
-                                { k: 'care', label: '🤗' },
-                                { k: 'haha', label: '😆' },
-                                { k: 'wow', label: '😮' },
-                                { k: 'sad', label: '😢' },
-                                { k: 'angry', label: '😡' },
+                                { k: 'like', src: likeSvg },
+                                { k: 'love', src: loveSvg },
+                                // { k: 'care', src: careSvg },
+                                { k: 'haha', src: hahaSvg },
+                                { k: 'wow', src: wowSvg },
+                                { k: 'sad', src: sadSvg },
+                                { k: 'angry', src: angrySvg },
                             ].map(r => (
-                                <Button key={r.k} onClick={() => setReactionQuick(r.k)} sx={{ minWidth: 0, width: 36, height: 36, borderRadius: "50%", fontSize: 20, lineHeight: 1 }}>
-                                    {r.label}
-                                </Button>
+                                <button
+                                    key={r.k}
+                                    onClick={() => setReactionQuick(r.k)}
+                                    style={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: 'linear-gradient(145deg, #ffffff, #eef1f6)',
+                                        boxShadow: '2px 4px 10px rgba(0,0,0,0.12), -2px -2px 8px rgba(255,255,255,0.9)',
+                                        fontSize: 22,
+                                        lineHeight: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'transform 120ms ease, box-shadow 120ms ease'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.06)'; e.currentTarget.style.boxShadow = '4px 8px 16px rgba(0,0,0,0.18), -2px -2px 8px rgba(255,255,255,0.95)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '2px 4px 10px rgba(0,0,0,0.12), -2px -2px 8px rgba(255,255,255,0.9)'; }}
+                                >
+                                    <img src={r.src} alt={r.k} style={{ width: 24, height: 24 }} />
+                                </button>
                             ))}
                         </Box>
                     )}

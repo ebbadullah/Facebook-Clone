@@ -20,7 +20,16 @@ let postSchema = new mongoose.Schema(
 
         originalPost: { type: mongoose.Schema.Types.ObjectId, ref: "Post" },
 
-        isShared: { type: Boolean, default: false }
+        isShared: { type: Boolean, default: false },
+
+        // Reactions keep compatibility with existing likes
+        // type enum can be extended later if needed
+        reactions: [
+            {
+                user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+                type: { type: String, enum: ["like", "love", "care", "haha", "wow", "sad", "angry"] }
+            }
+        ]
     },
     { timestamps: true }
 );

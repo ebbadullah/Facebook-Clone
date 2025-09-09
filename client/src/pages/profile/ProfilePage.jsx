@@ -5,6 +5,7 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Icon
 import { Close, Check, Clear } from "@mui/icons-material"
 import { toast } from "react-toastify"
 import { getCurrentUser } from "../../store/slices/userSlice"
+import userService from "../../services/userService"
 import api from "../../services/api"
 import ProfileHeader from "../../components/profile/ProfileHeader"
 import ProfileContent from "../../components/profile/ProfileContent"
@@ -22,6 +23,7 @@ const ProfilePage = () => {
     const [userPhotos, setUserPhotos] = useState([])
     const [userVideos, setUserVideos] = useState([])
     const [userShared, setUserShared] = useState([])
+    const [viewedUser, setViewedUser] = useState(null)
     const [editForm, setEditForm] = useState({ name: "", bio: "" })
     const [friendsList, setFriendsList] = useState([])
     const [blockedList, setBlockedList] = useState([])
@@ -41,19 +43,25 @@ const ProfilePage = () => {
             const targetUserId = userId || authUser?._id
             if (!targetUserId) return
 
-            // Load user posts
-            const postsResponse = await api.get(`/posts/user/${targetUserId}`)
+            // Load viewed user if not own profile
+            if (!isOwnProfile) {
+                const userResp = await userService.getUserById(targetUserId)
+                setViewedUser(userResp.data.user)
+            } else {
+                setViewedUser(null)
+            }
+
+            // Fetch content in parallel for performance
+            const [postsResponse, photosResponse, videosResponse, sharedResponse] = await Promise.all([
+                api.get(`/posts/user/${targetUserId}`),
+                api.get(`/posts/user/${targetUserId}?type=photos`),
+                api.get(`/posts/user/${targetUserId}?type=videos`),
+                api.get(`/posts/user/${targetUserId}?type=shared`),
+            ])
+
             setUserPosts(postsResponse.data.data || [])
-
-            // Load photos
-            const photosResponse = await api.get(`/posts/user/${targetUserId}?type=photo`)
             setUserPhotos(photosResponse.data.data || [])
-
-            const videosResponse = await api.get(`/posts/user/${targetUserId}?type=video`)
             setUserVideos(videosResponse.data.data || [])
-
-            // Load shared posts
-            const sharedResponse = await api.get(`/posts/user/${targetUserId}?type=shared`)
             setUserShared(sharedResponse.data.data || [])
 
             // Load friends and blocked users if own profile
@@ -115,11 +123,22 @@ const ProfilePage = () => {
         }
     }
 
-    const user = isOwnProfile ? currentUser : null
+    const user = isOwnProfile ? currentUser : viewedUser
+
+    const relationship = (() => {
+        if (!user || !authUser) return { isFriend: false, requestSent: false }
+        const myId = authUser._id
+        const targetId = user._id
+        const iFollowHim = Array.isArray(authUser.following) && authUser.following.includes(targetId)
+        const heFollowsMe = Array.isArray(user.following) && user.following.includes(myId)
+        const isFriend = iFollowHim && heFollowsMe
+        const requestSent = Array.isArray(authUser.sentFriendRequests) && authUser.sentFriendRequests.includes(targetId)
+        return { isFriend, requestSent }
+    })()
 
     return (
         <Box sx={{ maxWidth: "1200px", mx: "auto", px: { xs: 1, sm: 2, md: 3 }, backgroundColor: "#f0f2f5", minHeight: "100vh" }}>
-            <ProfileHeader user={user} isOwnProfile={isOwnProfile} userId={userId} userPosts={userPosts} friendRequests={friendRequests} onEditProfile={handleEditProfile} onShowFriendsDialog={() => setShowFriendsDialog(true)} />
+            <ProfileHeader user={user} isOwnProfile={isOwnProfile} userId={userId} userPosts={userPosts} friendRequests={friendRequests} onEditProfile={handleEditProfile} onShowFriendsDialog={() => setShowFriendsDialog(true)} relationship={relationship} />
 
             <ProfileContent user={user} isOwnProfile={isOwnProfile} userPosts={userPosts} userPhotos={userPhotos} userVideos={userVideos} userShared={userShared} onEditDialog={() => setShowEditDialog(true)} />
 

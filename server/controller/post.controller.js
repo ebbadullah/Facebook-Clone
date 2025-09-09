@@ -282,6 +282,74 @@ let getPostLikes = async (req, res) => {
     }
 }
 
+// Set or clear a reaction for the current user on a post
+let setReaction = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const postId = req.params.id;
+        const { type } = req.body; // one of: like, love, care, haha, wow, sad, angry, or undefined/null to clear
+
+        if (!userId || !postId) {
+            return res.status(400).json({ status: false, message: "User ID and Post ID are required" });
+        }
+
+        const postDoc = await post.findById(postId);
+        if (!postDoc) return res.status(404).json({ status: false, message: "Post not found" });
+
+        // Remove any existing reaction by this user
+        const previousReaction = (postDoc.reactions || []).find(r => r.user?.toString() === userId);
+        postDoc.reactions = (postDoc.reactions || []).filter(r => r.user?.toString() !== userId);
+
+        // Maintain likes for backward-compat UI/counts
+        const wasLike = postDoc.likes.includes(userId);
+        if (wasLike) {
+            postDoc.likes.pull(userId);
+        }
+
+        // If new type provided, add it and sync likes for 'like'
+        const allowed = ["like", "love", "care", "haha", "wow", "sad", "angry"];
+        if (type && allowed.includes(type)) {
+            postDoc.reactions.push({ user: userId, type });
+            if (type === "like") {
+                postDoc.likes.push(userId);
+            }
+        }
+
+        await postDoc.save();
+
+        // Notifications: only when adding (not clearing), and not for own posts
+        if (type && postDoc.author.toString() !== userId) {
+            try {
+                const { createNotification } = await import("./notification.controller.js");
+                const notifType = type === "like" ? "like" : "reaction";
+                await createNotification(postDoc.author, userId, notifType, { post: postId, reaction: type });
+            } catch (_) {
+                // ignore notification errors
+            }
+        }
+
+        const updatedPost = await post.findById(postId)
+            .populate("likes", "name username ProfilePicture")
+            .populate("reactions.user", "name username ProfilePicture");
+
+        const isLiked = !!type && type === "like"; // current user's state
+        return res.status(200).json({
+            status: true,
+            message: type ? "reaction set" : "reaction cleared",
+            data: {
+                postId,
+                isLiked,
+                likes: updatedPost.likes,
+                reactions: updatedPost.reactions || [],
+                likesCount: updatedPost.likes?.length || 0
+            }
+        });
+    } catch (error) {
+        console.error("Set reaction error:", error);
+        res.status(500).json({ status: false, message: "Internal server error", error: error.message });
+    }
+}
+
 let getUserPosts = async (req, res) => {
     try {
         let { userId } = req.params
@@ -319,4 +387,4 @@ let getUserPosts = async (req, res) => {
     }
 }
 
-export { postCreate, likeDislike, getAllPosts, bookmarkPost, postComment, deletePost, updatePost, sharePost, getPostLikes, getUserPosts }
+export { postCreate, likeDislike, getAllPosts, bookmarkPost, postComment, deletePost, updatePost, sharePost, getPostLikes, getUserPosts, setReaction }

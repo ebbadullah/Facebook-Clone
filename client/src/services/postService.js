@@ -31,6 +31,10 @@ const postService = {
         return api.put(`/posts/${postId}/like`)
     },
 
+    setReaction: (postId, type) => {
+        return api.put(`/posts/${postId}/reaction`, { type })
+    },
+
     bookmarkPost: (postId) => {
         return api.put(`/posts/${postId}/bookmark`)
     },

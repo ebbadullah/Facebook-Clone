@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { Box, Paper, Avatar, Typography, IconButton, Button, Menu, MenuItem, TextField, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemAvatar, ListItemText } from "@mui/material"
 import { MoreHoriz, ThumbUp, ChatBubbleOutline, Share, BookmarkBorder, Send, Public, ThumbUpOffAlt, Close, Edit, Delete } from "@mui/icons-material"
 import { toast } from "react-toastify"
-import { likePost, bookmarkPost, commentOnPost, deletePost, updatePost } from "../../store/slices/postSlice"
+import { likePost, bookmarkPost, commentOnPost, deletePost, updatePost, setPostReaction } from "../../store/slices/postSlice"
 import api from "../../services/api"
 import GalleryViewer from "../../Plugins/LightGallery/Index"
 import VideoJSPlayer from "../../Plugins/VideoJs/Index"
@@ -24,6 +24,7 @@ const PostCard = ({ post }) => {
     const [editCaption, setEditCaption] = useState(post.caption || "")
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [isLiking, setIsLiking] = useState(false)
+    const [showReactions, setShowReactions] = useState(false)
 
     const mediaItems = Array.isArray(post.media) && post.media.length > 0
         ? post.media.map((m) => ({ url: m.url, type: m.type, caption: m.caption || post.caption, alt: m.alt || `Media from ${post.author?.name}`, poster: m.poster }))
@@ -51,19 +52,31 @@ const PostCard = ({ post }) => {
         if (isLiking) return;
         setIsLiking(true);
         try {
-            const result = await dispatch(likePost(post._id)).unwrap();
-            if (result.data && result.data.message) {
-                if (result.data.message.includes("liked")) {
-                    toast.success("Post liked!");
-                } else if (result.data.message.includes("disliked")) {
-                    toast.success("Post disliked!");
-                }
-            }
+            // Toggle like: if already reacted with like -> clear; else set like
+            const currentReaction = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id);
+            const nextType = currentReaction?.type === 'like' ? null : 'like';
+            await dispatch(setPostReaction({ postId: post._id, type: nextType })).unwrap();
         } catch (error) {
-            console.error("Like error:", error);
-            toast.error("Failed to like post");
+            console.error("Reaction error:", error);
+            toast.error("Failed to update reaction");
         } finally {
             setIsLiking(false);
+        }
+    }
+
+    const setReactionQuick = async (type) => {
+        if (isLiking) return;
+        setIsLiking(true);
+        try {
+            const current = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id)?.type;
+            const next = current === type ? null : type;
+            await dispatch(setPostReaction({ postId: post._id, type: next })).unwrap();
+        } catch (error) {
+            console.error("Reaction error:", error);
+            toast.error("Failed to react");
+        } finally {
+            setIsLiking(false);
+            setShowReactions(false);
         }
     }
     
@@ -151,6 +164,38 @@ const PostCard = ({ post }) => {
         }
         return like === user?._id;
     }) || post.isLiked;
+
+    const myReaction = (post.reactions || []).find(r => (r.user?._id || r.user) === user?._id)?.type;
+
+    const getReactionEmoji = (type) => {
+        switch (type) {
+            case 'like': return '👍';
+            case 'love': return '❤️';
+            case 'care': return '🤗';
+            case 'haha': return '😆';
+            case 'wow': return '😮';
+            case 'sad': return '😢';
+            case 'angry': return '😡';
+            default: return null;
+        }
+    }
+
+    const reactionsCount = Array.isArray(post.reactions) ? post.reactions.length : (post.likes?.length || 0);
+
+    const dominantReaction = (() => {
+        if (!Array.isArray(post.reactions) || post.reactions.length === 0) return null;
+        const counts = post.reactions.reduce((acc, r) => {
+            if (!r?.type) return acc;
+            acc[r.type] = (acc[r.type] || 0) + 1;
+            return acc;
+        }, {});
+        let best = null;
+        let bestCount = -1;
+        Object.entries(counts).forEach(([k, v]) => {
+            if (v > bestCount) { best = k; bestCount = v; }
+        });
+        return best;
+    })();
 
     const isAuthor = post.author?._id === user?._id
 
@@ -366,24 +411,28 @@ const PostCard = ({ post }) => {
             <Box sx={{ px: 3, py: 2 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Tooltip title={post.likes?.length > 0 ? (
+                        <Tooltip title={reactionsCount > 0 ? (
                                 <Box>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Liked by:</Typography>
-                                    {post.likes?.slice(0, 3).map((like, index) => (
+                                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Reactions:</Typography>
+                                    {(post.reactions || post.likes || []).slice(0, 3).map((entry, index) => (
                                         <Typography key={index} variant="body2">
-                                            {like.name || like.username || (typeof like === 'object' ? like._id : like)}
+                                            {entry?.user?.name || entry?.name || entry?.username || (typeof entry === 'object' ? (entry?.user?._id || entry?._id) : entry)}
                                         </Typography>
                                     ))}
-                                    {post.likes?.length > 3 && <Typography variant="body2" sx={{ fontStyle: "italic" }}>and {post.likes.length - 3} more...</Typography>}
+                                    {reactionsCount > 3 && <Typography variant="body2" sx={{ fontStyle: "italic" }}>and {reactionsCount - 3} more...</Typography>}
                                 </Box>
                             ) : (
                                 <Typography variant="body2">No likes yet</Typography>
                             )} arrow placement="top">
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, cursor: post.likes?.length > 0 ? "pointer" : "default", "&:hover": { opacity: post.likes?.length > 0 ? 0.8 : 1 } }} onClick={post.likes?.length > 0 ? handleShowLikes : undefined} className="hover-scale">
-                                <Box sx={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: post.likes?.length > 0 ? "#1877f2" : "#e4e6ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <ThumbUp sx={{ fontSize: "12px", color: post.likes?.length > 0 ? "white" : "#65676b" }} />
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, cursor: reactionsCount > 0 ? "pointer" : "default", "&:hover": { opacity: reactionsCount > 0 ? 0.8 : 1 } }} onClick={reactionsCount > 0 ? handleShowLikes : undefined} className="hover-scale">
+                                <Box sx={{ width: 20, height: 20, borderRadius: "50%", backgroundColor: reactionsCount > 0 ? "#f0f2f5" : "#e4e6ea", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    {getReactionEmoji(myReaction || dominantReaction) ? (
+                                        <span style={{ fontSize: 12 }}>{getReactionEmoji(myReaction || dominantReaction)}</span>
+                                    ) : (
+                                        <ThumbUp sx={{ fontSize: "12px", color: "#65676b" }} />
+                                    )}
                                 </Box>
-                                <Typography variant="body2" className="fb-text-secondary">{post.likes?.length || 0}</Typography>
+                                <Typography variant="body2" className="fb-text-secondary">{reactionsCount}</Typography>
                             </Box>
                         </Tooltip>
                     </Box>
@@ -394,9 +443,28 @@ const PostCard = ({ post }) => {
             <div className="fb-divider" />
 
             <Box sx={{ display: "flex", justifyContent: "space-around", py: 1, px: 2 }}>
-                <Button startIcon={isLiked ? <ThumbUp /> : <ThumbUpOffAlt />} onClick={handleLike} disabled={isLiking} className={`fb-button ${isLiked ? "fb-button-primary" : "fb-button-secondary"}`} sx={{ color: isLiked ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}>
-                    {isLiked ? 'Liked' : 'Like'}
-                </Button>
+                <Box onMouseEnter={() => setShowReactions(true)} onMouseLeave={() => setShowReactions(false)} sx={{ position: "relative", flex: 1 }}>
+                    <Button startIcon={isLiked || myReaction ? <ThumbUp /> : <ThumbUpOffAlt />} onClick={handleLike} disabled={isLiking} className={`fb-button ${(isLiked || myReaction) ? "fb-button-primary" : "fb-button-secondary"}`} sx={{ color: (isLiked || myReaction) ? "#1877f2" : "#65676b", textTransform: "none", flex: 1, fontWeight: 600, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px", width: "100%" }}>
+                        {myReaction ? myReaction.charAt(0).toUpperCase() + myReaction.slice(1) : (isLiked ? 'Liked' : 'Like')}
+                    </Button>
+                    {showReactions && (
+                        <Box sx={{ position: "absolute", bottom: "100%", left: 12, mb: 1, background: "#fff", border: "1px solid #e4e6ea", borderRadius: "28px", boxShadow: "0 8px 16px rgba(0,0,0,0.15)", p: 1, display: "flex", gap: 1, zIndex: 10 }}>
+                            {[
+                                { k: 'like', label: '👍' },
+                                { k: 'love', label: '❤️' },
+                                { k: 'care', label: '🤗' },
+                                { k: 'haha', label: '😆' },
+                                { k: 'wow', label: '😮' },
+                                { k: 'sad', label: '😢' },
+                                { k: 'angry', label: '😡' },
+                            ].map(r => (
+                                <Button key={r.k} onClick={() => setReactionQuick(r.k)} sx={{ minWidth: 0, width: 36, height: 36, borderRadius: "50%", fontSize: 20, lineHeight: 1 }}>
+                                    {r.label}
+                                </Button>
+                            ))}
+                        </Box>
+                    )}
+                </Box>
                 <Button startIcon={<ChatBubbleOutline />} onClick={() => setShowComments(!showComments)} className="fb-button fb-button-secondary" sx={{ color: "#65676b", textTransform: "none", fontWeight: 600, flex: 1, py: 2, mx: 1, borderRadius: "8px", fontSize: "15px" }}>
                     Comment
                 </Button>

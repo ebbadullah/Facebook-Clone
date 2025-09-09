@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux"
 import { getCurrentUser } from "../../store/slices/userSlice"
 import api from "../../services/api"
 
-const ProfileHeader = ({ user, isOwnProfile, userId, userPosts, friendRequests, onEditProfile, onShowFriendsDialog }) => {
+const ProfileHeader = ({ user, isOwnProfile, userId, userPosts, friendRequests, onEditProfile, onShowFriendsDialog, relationship }) => {
     const dispatch = useDispatch()
 
     const handleProfilePictureChange = async (event) => {
@@ -104,11 +104,16 @@ const ProfileHeader = ({ user, isOwnProfile, userId, userPosts, friendRequests, 
                             </>
                         ) : (
                             <>
-                                <Button startIcon={<PersonAdd />} onClick={handleSendFriendRequest} sx={{ textTransform: "none", fontWeight: 600, borderRadius: "6px", px: { xs: 2, sm: 3 }, py: 1, backgroundColor: "#1877f2", color: "white", fontSize: { xs: "0.875rem", sm: "1rem" }, "&:hover": { backgroundColor: "#166fe5" } }}>
-                                    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Add friend</Box>
-                                    <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Add</Box>
-                                </Button>
-                                <Button startIcon={<Message />} sx={{ textTransform: "none", fontWeight: 600, borderRadius: "6px", px: { xs: 2, sm: 3 }, py: 1, backgroundColor: "#e4e6ea", color: "#1c1e21", fontSize: { xs: "0.875rem", sm: "1rem" }, "&:hover": { backgroundColor: "#d8dadf" } }}>Message</Button>
+                                {relationship?.isFriend ? (
+                                    <Button startIcon={<Message />} sx={{ textTransform: "none", fontWeight: 600, borderRadius: "6px", px: { xs: 2, sm: 3 }, py: 1, backgroundColor: "#e4e6ea", color: "#1c1e21", fontSize: { xs: "0.875rem", sm: "1rem" }, "&:hover": { backgroundColor: "#d8dadf" } }}>Friends</Button>
+                                ) : relationship?.requestSent ? (
+                                    <Button disabled sx={{ textTransform: "none", fontWeight: 600, borderRadius: "6px", px: { xs: 2, sm: 3 }, py: 1, backgroundColor: "#e4e6ea", color: "#1c1e21", fontSize: { xs: "0.875rem", sm: "1rem" } }}>Request sent</Button>
+                                ) : (
+                                    <Button startIcon={<PersonAdd />} onClick={handleSendFriendRequest} sx={{ textTransform: "none", fontWeight: 600, borderRadius: "6px", px: { xs: 2, sm: 3 }, py: 1, backgroundColor: "#1877f2", color: "white", fontSize: { xs: "0.875rem", sm: "1rem" }, "&:hover": { backgroundColor: "#166fe5" } }}>
+                                        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Add friend</Box>
+                                        <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>Add</Box>
+                                    </Button>
+                                )}
                             </>
                         )}
                     </Box>

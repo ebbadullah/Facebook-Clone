@@ -36,6 +36,24 @@ export const likePost = createAsyncThunk("posts/like", async (postId, { rejectWi
     }
 });
 
+export const setPostReaction = createAsyncThunk(
+    "posts/setReaction",
+    async ({ postId, type }, { rejectWithValue, getState }) => {
+        try {
+            const response = await postService.setReaction(postId, type);
+            const { user } = getState().auth;
+            return {
+                postId,
+                userId: user?._id,
+                data: response.data.data,
+                type
+            };
+        } catch (error) {
+            return rejectWithValue(error.response?.data || { message: "Failed to set reaction" });
+        }
+    }
+);
+
 export const bookmarkPost = createAsyncThunk("posts/bookmark", async (postId, { rejectWithValue }) => {
     try {
         const response = await postService.bookmarkPost(postId);
@@ -139,6 +157,18 @@ const postSlice = createSlice({
                 }
             })
             .addCase(likePost.rejected, (state, action) => {
+                state.error = action.payload.message;
+            })
+            .addCase(setPostReaction.fulfilled, (state, action) => {
+                const { postId, data } = action.payload;
+                const post = state.posts.find((p) => p._id === postId);
+                if (post && data) {
+                    post.likes = data.likes;
+                    post.isLiked = data.isLiked;
+                    post.reactions = data.reactions;
+                }
+            })
+            .addCase(setPostReaction.rejected, (state, action) => {
                 state.error = action.payload.message;
             })
             .addCase(deletePost.fulfilled, (state, action) => {

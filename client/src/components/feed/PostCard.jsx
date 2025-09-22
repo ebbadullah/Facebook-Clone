@@ -475,8 +475,8 @@ const PostCard = ({ post, onPostUpdate }) => {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: 26,
-                                height: 26,
+                                width: 30,
+                                height: 30,
                                 borderRadius: '50%',
                                 background: 'linear-gradient(145deg, #ffffff, #e6e9ef)',
                                 boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.06), 2px 4px 8px rgba(0,0,0,0.08)'

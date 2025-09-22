@@ -496,7 +496,6 @@ const PostCard = ({ post, onPostUpdate }) => {
                             {[
                                 { k: 'like', src: likeSvg },
                                 { k: 'love', src: loveSvg },
-                                // { k: 'care', src: careSvg },
                                 { k: 'haha', src: hahaSvg },
                                 { k: 'wow', src: wowSvg },
                                 { k: 'sad', src: sadSvg },

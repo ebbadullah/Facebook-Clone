@@ -25,12 +25,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
     cors({
-        origin:  "http://localhost:5173",
+        origin: process.env.CLIENT_URL || "http://localhost:5173",
         credentials: true,
     })
 );
 
 connectDB();
+
+// ✅ test route
+app.get("/api/test", (req, res) => {
+    res.json({ success: true, message: "API working fine 🚀" });
+});
 
 app.use("/api/users", userRoute);
 app.use("/api/posts", postRoute);
@@ -42,7 +47,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({
         status: false,
         message: "Something broke!",
-        error: process.env.NODE_ENV === "development" ? err.message : undefined
+        error: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
 });
 

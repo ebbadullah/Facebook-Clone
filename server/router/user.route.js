@@ -1,5 +1,5 @@
 import express from "express";
-let route = express.Router();
+const router = express.Router();
 import { checkAuthentication, getUser, login, logout, register, verifyOTP, suggestedUser, getUserById, followAndUnfollow, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, getFriendRequests, getUserFriends, blockUser, unblockUser, getBlockedUsers, updateProfile, updateProfilePicture, searchUsers } from "../controller/user.controller.js";
 import { body } from "express-validator";
 import auth from "../middleware/auth.js";
@@ -12,30 +12,30 @@ let validation = [
     body("password").notEmpty().withMessage("Password is required").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
 ];
 
-route.post("/register", validation, register);
-route.post("/verify-otp", verifyOTP);
-route.post("/login", login);
-route.get("/logout", logout);
-route.get("/checkAuthentication", auth, checkAuthentication);
+router.post("/register", validation, register);
+router.post("/verify-otp", verifyOTP);
+router.post("/login", login);
+router.get("/logout", logout);
+router.get("/checkAuthentication", auth, checkAuthentication);
 
-route.get("/getUser", auth, getUser);
-route.get("/suggestedUser", auth, suggestedUser);
-route.get("/getUserById/:userId", auth, getUserById);
-route.put("/followAndUnfollow/:id", auth, followAndUnfollow);
+router.get("/getUser", auth, getUser);
+router.get("/suggestedUser", auth, suggestedUser);
+router.get("/getUserById/:userId", auth, getUserById);
+router.put("/followAndUnfollow/:id", auth, followAndUnfollow);
 
-route.post("/friend-request/:receiverId", auth, sendFriendRequest);
-route.post("/friend-request/:senderId/accept", auth, acceptFriendRequest);
-route.post("/friend-request/:senderId/reject", auth, rejectFriendRequest);
-route.get("/friend-requests", auth, getFriendRequests);
-route.get("/friends", auth, getUserFriends);
+router.post("/friend-request/:receiverId", auth, sendFriendRequest);
+router.post("/friend-request/:senderId/accept", auth, acceptFriendRequest);
+router.post("/friend-request/:senderId/reject", auth, rejectFriendRequest);
+router.get("/friend-requests", auth, getFriendRequests);
+router.get("/friends", auth, getUserFriends);
 
-route.post("/block/:userId", auth, blockUser);
-route.post("/unblock/:userId", auth, unblockUser);
-route.get("/blocked-users", auth, getBlockedUsers);
+router.post("/block/:userId", auth, blockUser);
+router.post("/unblock/:userId", auth, unblockUser);
+router.get("/blocked-users", auth, getBlockedUsers);
 
-route.put("/profile", auth, updateProfile);
-route.put("/profile-picture", auth, upload.single("profilePicture"), updateProfilePicture);
+router.put("/profile", auth, updateProfile);
+router.put("/profile-picture", auth, upload.single("profilePicture"), updateProfilePicture);
 
-route.get("/search", auth, searchUsers);
+router.get("/search", auth, searchUsers);
 
-export default route;
+export default router;

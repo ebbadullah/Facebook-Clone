@@ -1,21 +1,21 @@
 import express from "express";
-let route = express.Router();
+const router = express.Router();
 import { postCreate, likeDislike, getAllPosts, bookmarkPost, postComment, deletePost, updatePost, sharePost, getPostLikes, getUserPosts, setReaction } from "../controller/post.controller.js";
 import auth from "../middleware/auth.js";
 import upload from "../utils/multer.js";
 
-route.post("/create", auth, upload.array("media", 5), postCreate);
+router.post("/create", auth, upload.array("media", 5), postCreate);
 
-route.put("/:id/like", auth, likeDislike);
-route.put("/:id/reaction", auth, setReaction);
-route.get("/", auth, getAllPosts);
-route.put("/:id/bookmark", auth, bookmarkPost);
-route.post("/:id/comment", auth, postComment);
-route.delete("/:id", auth, deletePost);
-route.put("/:id", auth, updatePost);
+router.put("/:id/like", auth, likeDislike);
+router.put("/:id/reaction", auth, setReaction);
+router.get("/", auth, getAllPosts);
+router.put("/:id/bookmark", auth, bookmarkPost);
+router.post("/:id/comment", auth, postComment);
+router.delete("/:id", auth, deletePost);
+router.put("/:id", auth, updatePost);
 
-route.post("/:id/share", auth, sharePost);
-route.get("/:id/likes", auth, getPostLikes);
-route.get("/user/:userId", auth, getUserPosts);
+router.post("/:id/share", auth, sharePost);
+router.get("/:id/likes", auth, getPostLikes);
+router.get("/user/:userId", auth, getUserPosts);
 
-export default route;
+export default router;

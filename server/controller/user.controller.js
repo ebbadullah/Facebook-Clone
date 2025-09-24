@@ -2,8 +2,7 @@ import { validationResult } from "express-validator"
 import user from "../model/user.schema.js"
 import bcrypt from "bcryptjs"
 import generateToken from "../utils/generateToken.js"
-import { sendOTP, sendWelcomeEmail } from "../email/sendemail.js"
-
+import { sendOTP, sendWelcomeEmail } from "../email/sendemail.js";
 let register = async (req, res) => {
     let { username, name, email, password } = req.body
     try {

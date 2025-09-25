@@ -18,6 +18,7 @@ import storyRoute from "./router/story.route.js";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 
 app.use(express.json());
@@ -25,10 +26,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
     cors({
-      origin: ["https://faacebook-app.netlify.app", "http://localhost:5173"],
+      origin: ["https://faacebook-app.netlify.app"],
       credentials: true,
     })
-);
+  );
 
 connectDB();
 

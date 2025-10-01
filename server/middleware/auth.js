@@ -2,9 +2,16 @@ import jwt from "jsonwebtoken";
 
 function auth(req, res, next) {
   try {
-    const token = req.cookies?.token;
+    // 1) Token from cookies
+    let token = req.cookies?.token;
+
+    // 2) Agar cookie me nahi mila to headers me check karo
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.split(" ")[1]; // "Bearer <token>"
+    }
+
     if (!token) {
-      return res.status(400).json({
+      return res.status(401).json({
         status: false,
         message: "please continue to login",
       });
@@ -15,7 +22,7 @@ function auth(req, res, next) {
       req.userId = decode.userId;
       next();
     } else {
-      return res.status(400).json({
+      return res.status(401).json({
         status: false,
         message: "please provide a valid token",
       });

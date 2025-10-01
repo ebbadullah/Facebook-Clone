@@ -2,27 +2,30 @@ import jwt from "jsonwebtoken";
 
 function auth(req, res, next) {
   try {
-    let token = req.cookies?.token;
+    const token = req.cookies?.token;
     if (!token) {
       return res.status(400).json({
         status: false,
         message: "please continue to login",
       });
     }
-    let decode = jwt.verify(token, process.env.SECRET_KEY);
+
+    const decode = jwt.verify(token, process.env.SECRET_KEY);
     if (decode.userId) {
       req.userId = decode.userId;
       next();
     } else {
-      res.status(400).json({
+      return res.status(400).json({
         status: false,
         message: "please provide a valid token",
       });
     }
   } catch (error) {
-    res.status(500).json({
+    console.error("Auth Middleware Error:", error.message);
+    return res.status(500).json({
       status: false,
       message: "internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 }

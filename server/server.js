@@ -21,37 +21,37 @@ const app = express();
 app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 
-// ✅ allowed frontend urls hardcoded here
-// ✅ Allowed origins update karo
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://facebook-clone-1-wxv5.onrender.com",
   "https://faacebook-app.netlify.app",
-  "https://faacebook-app.netlify.app/" // slash wala bhi add karo
+  "https://faacebook-app.netlify.app/"
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // ✅ Allow requests with no origin (like mobile apps, postman)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log('🚫 Blocked by CORS:', origin);
+        console.log("🚫 Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With']
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
   })
 );
 
 connectDB();
 
-// ✅ test route
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "API working fine 🚀" });
 });
@@ -61,7 +61,6 @@ app.use("/api/posts", postRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/stories", storyRoute);
 
-// error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({

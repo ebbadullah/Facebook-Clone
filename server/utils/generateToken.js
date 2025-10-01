@@ -7,10 +7,10 @@ function generateToken(res, userId) {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // ✅ Production me true hona chahiye
-      sameSite: 'none', // ✅ Cross-site ke liye 'none'
+      secure: true,
+      sameSite: 'none', 
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: '.onrender.com' // ✅ Wildcard domain use karo
+      domain: '.onrender.com' 
     });
 
     console.log('✅ Token generated for user:', userId);

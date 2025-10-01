@@ -17,7 +17,6 @@ export const uploadToCloudinary = async (filePath, folder) => {
             resource_type: "auto",
         });
         
-        // Clean up temporary file after upload
         try {
             fs.unlinkSync(filePath);
         } catch (unlinkError) {
@@ -28,7 +27,6 @@ export const uploadToCloudinary = async (filePath, folder) => {
     } catch (error) {
         console.error("Error uploading to cloudinary:", error);
         
-        // Clean up temporary file even if upload fails
         try {
             fs.unlinkSync(filePath);
         } catch (unlinkError) {

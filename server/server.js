@@ -21,10 +21,12 @@ const app = express();
 app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 
-// parse client urls (support multiple origins)
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",")
-  : ["http://localhost:5173"];
+// ✅ allowed frontend urls hardcoded here
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://facebook-clone-hnym.onrender.com",
+  "https://faacebook-app.netlify.app",
+];
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -44,6 +46,7 @@ app.use(
 
 connectDB();
 
+// ✅ test route
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "API working fine 🚀" });
 });
@@ -53,6 +56,7 @@ app.use("/api/posts", postRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/stories", storyRoute);
 
+// error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({

@@ -22,25 +22,30 @@ app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 
 // ✅ allowed frontend urls hardcoded here
+// ✅ Allowed origins update karo
 const allowedOrigins = [
   "http://localhost:5173",
   "https://facebook-clone-1-wxv5.onrender.com",
   "https://faacebook-app.netlify.app",
+  "https://faacebook-app.netlify.app/" // slash wala bhi add karo
 ];
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // ✅ Allow requests with no origin (like mobile apps, postman)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.log('🚫 Blocked by CORS:', origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With']
   })
 );
 

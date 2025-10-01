@@ -24,7 +24,7 @@ const port = process.env.PORT || 5000;
 // ✅ allowed frontend urls hardcoded here
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://facebook-clone-hnym.onrender.com",
+  "https://facebook-clone-1-wxv5.onrender.com",
   "https://faacebook-app.netlify.app",
 ];
 

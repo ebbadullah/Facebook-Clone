@@ -18,6 +18,7 @@ import storyRoute from "./router/story.route.js";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 
 // parse client urls (support multiple origins)

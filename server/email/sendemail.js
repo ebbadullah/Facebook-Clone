@@ -9,7 +9,9 @@ export async function sendOTP(email, otp) {
       subject: "OTP for Email Verification",
       html: generateOTPTemplate(otp),
     });
-    console.log(`OTP sent to user: ${email}`);
+    console.log(`OTP 
+      
+      sent to user: ${email}`);
     return true;
   } catch (error) {
     console.log("Error sending OTP:", error);

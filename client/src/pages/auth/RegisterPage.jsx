@@ -18,9 +18,9 @@ const RegisterPage = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     useEffect(() => {
-        if (registrationData) {
-            toast.success("Registration successful! Please verify your email.")
-            navigate("/verify-otp")
+        if (registrationData && registrationData.user) {
+            toast.success(`Welcome ${registrationData.user.username}! Your account has been created successfully.`)
+            navigate("/")
         }
     }, [registrationData, navigate])
 

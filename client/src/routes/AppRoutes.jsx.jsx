@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom"
 import { useSelector } from "react-redux"
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
-import OTPVerificationPage from "../pages/auth/OTPVerificationPage"
+// OTP verification skipped
+// import OTPVerificationPage from "../pages/auth/OTPVerificationPage"
 import HomePage from "../pages/home/HomePage"
 import ProfilePage from "../pages/profile/ProfilePage"
 import FriendsPage from "../pages/friends/FriendsPage"
@@ -39,13 +40,7 @@ const AppRoutes = () => {
         </PublicRoute>
       } />
 
-      <Route path="/verify-otp" element={
-        <PublicRoute>
-          <AuthLayout>
-            <OTPVerificationPage />
-          </AuthLayout>
-        </PublicRoute>
-      } />
+      {/* OTP verification route removed */}
 
       <Route path="/" element={
         <ProtectedRoute>

@@ -3,6 +3,8 @@ import user from "../model/user.schema.js"
 import bcrypt from "bcryptjs"
 import generateToken from "../utils/generateToken.js"
 import { sendOTP, sendWelcomeEmail } from "../email/sendemail.js";
+
+
 let register = async (req, res) => {
     let { username, name, email, password } = req.body
     try {
@@ -12,16 +14,28 @@ let register = async (req, res) => {
         let existingUser = await user.findOne({ email })
         if (existingUser) return res.status(400).json({ status: false, message: "User already exists" })
         
-        let otp = Math.floor(1000 + Math.random() * 9000).toString()
-        let otpExpiry = new Date(Date.now() + 10 * 60 * 1000)
         let hashedpassword = await bcrypt.hash(password, 12)
         
-        let newUser = new user({ username, name, email, password: hashedpassword, emailVerificationToken: otp, emailVerifyTokenExpires: otpExpiry, IsVerify: false })
+        // Skip OTP verification and directly set user as verified
+        let newUser = new user({ username, name, email, password: hashedpassword, IsVerify: true })
         let createdUser = await newUser.save()
         
-        await sendOTP(email, otp)
+        // Send welcome email directly
+        await sendWelcomeEmail(email, username)
         
-        res.status(201).json({ status: true, message: `User registered successfully. Please verify with OTP.`, userId: createdUser._id })
+        // Generate token for automatic login
+        generateToken(res, createdUser._id)
+        
+        res.status(201).json({ 
+            status: true, 
+            message: `Welcome ${username}! Your account has been created successfully.`, 
+            user: { 
+                _id: createdUser._id, 
+                username: createdUser.username, 
+                email: createdUser.email, 
+                name: createdUser.name 
+            } 
+        })
     } catch (error) {
         console.log(error)
         res.status(500).json({ status: false, message: "Internal server error" })

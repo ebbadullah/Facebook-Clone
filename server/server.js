@@ -20,21 +20,31 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+// parse client urls (support multiple origins)
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",")
+  : ["http://localhost:5173"];
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
-    cors({
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
-        credentials: true,
-    })
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
 );
 
 connectDB();
 
-// ✅ test route
 app.get("/api/test", (req, res) => {
-    res.json({ success: true, message: "API working fine 🚀" });
+  res.json({ success: true, message: "API working fine 🚀" });
 });
 
 app.use("/api/users", userRoute);
@@ -43,14 +53,14 @@ app.use("/api/notifications", notificationRoute);
 app.use("/api/stories", storyRoute);
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        status: false,
-        message: "Something broke!",
-        error: process.env.NODE_ENV === "development" ? err.message : undefined,
-    });
+  console.error(err.stack);
+  res.status(500).json({
+    status: false,
+    message: "Something broke!",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
 });
 
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });

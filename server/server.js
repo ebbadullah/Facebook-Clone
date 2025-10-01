@@ -29,7 +29,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://facebook-clone-1-wxv5.onrender.com",
   "https://faacebook-app.netlify.app",
-  "https://faacebook-app.netlify.app/"
+  "https://faacebook-app.netlify.app/",
+  "https://facebook-clone-11oj.vercel.app"
 ];
 
 app.use(

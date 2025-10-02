@@ -18,7 +18,6 @@ export const createStory = async (req, res) => {
             return res.status(500).json({ status: false, message: "Error uploading file" });
         }
 
-        // Determine media type
         const mediaType = file.mimetype.startsWith("video/") ? "video" : "image";
 
         const story = new Story({
@@ -30,7 +29,6 @@ export const createStory = async (req, res) => {
 
         await story.save();
 
-        // Add story to user's stories
         await User.findByIdAndUpdate(userId, { $push: { stories: story._id } });
 
         const populatedStory = await Story.findById(story._id).populate("author", "name username ProfilePicture");

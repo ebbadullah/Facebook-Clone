@@ -11,26 +11,27 @@ function auth(req, res, next) {
     if (!token) {
       return res.status(401).json({
         status: false,
-        message: "please continue to login",
+        message: "please login first",
       });
     }
 
     const decode = jwt.verify(token, process.env.SECRET_KEY);
-    if (decode.userId) {
+
+    if (decode?.userId) {
       req.userId = decode.userId;
-      next();
-    } else {
-      return res.status(401).json({
-        status: false,
-        message: "please provide a valid token",
-      });
+      return next();
     }
-  } catch (error) {
-    console.error("Auth Middleware Error:", error.message);
-    return res.status(500).json({
+
+    return res.status(401).json({
       status: false,
-      message: "internal server error",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      message: "invalid token",
+    });
+
+  } catch (error) {
+    console.error("❌ Auth Middleware Error:", error.message);
+    return res.status(401).json({
+      status: false,
+      message: "invalid or expired token",
     });
   }
 }

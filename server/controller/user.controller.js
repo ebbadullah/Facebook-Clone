@@ -1,4 +1,3 @@
-// user.controller.js
 import { validationResult } from "express-validator"
 import user from "../model/user.schema.js"
 import bcrypt from "bcryptjs"
@@ -23,10 +22,8 @@ let register = async (req, res) => {
     let newUser = new user({ username, name, email, password: hashedpassword, IsVerify: true })
     let createdUser = await newUser.save()
 
-    // Send welcome email directly
     await sendWelcomeEmail(email, username)
 
-    // Generate token for automatic login
     generateToken(res, createdUser._id)
 
     res.status(201).json({
@@ -166,7 +163,6 @@ let followAndUnfollow = async (req, res) => {
     let [me, you] = await Promise.all([user.findById(userMe), user.findById(userYou)])
     if (!me || !you) return res.status(404).json({ status: false, message: "user not found" })
 
-    // ensure arrays exist
     me.following = Array.isArray(me.following) ? me.following : []
     you.followers = Array.isArray(you.followers) ? you.followers : []
 
@@ -415,7 +411,7 @@ let searchUsers = async (req, res) => {
         { name: { $regex: query, $options: 'i' } },
         { username: { $regex: query, $options: 'i' } }
       ],
-      _id: { $ne: req.userId } // Exclude current user
+      _id: { $ne: req.userId }
     }).select("name username ProfilePicture").limit(10);
 
     res.status(200).json({ status: true, data: searchResults });

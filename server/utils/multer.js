@@ -6,7 +6,10 @@ import os from "os";
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const tempDir = os.tmpdir();
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
         cb(null, tempDir);
     },
     filename: function (req, file, cb) {

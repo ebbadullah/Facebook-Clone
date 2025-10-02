@@ -2,12 +2,10 @@ import jwt from "jsonwebtoken";
 
 function auth(req, res, next) {
   try {
-    // 1) Token from cookies
     let token = req.cookies?.token;
 
-    // 2) Agar cookie me nahi mila to headers me check karo
     if (!token && req.headers.authorization) {
-      token = req.headers.authorization.split(" ")[1]; // "Bearer <token>"
+      token = req.headers.authorization.split(" ")[1];
     }
 
     if (!token) {

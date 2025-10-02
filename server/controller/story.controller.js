@@ -45,10 +45,36 @@ export const createStory = async (req, res) => {
 export const getStories = async (req, res) => {
     try {
         const userId = req.userId;
+        
+        if (!userId) {
+            return res.status(400).json({
+                status: false,
+                message: "please continue to login",
+            });
+        }
 
-        // Get user's friends and following
-        const user = await User.findById(userId).populate("following");
-        const followingIds = user.following.map(friend => friend._id);
+        // get user
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found",
+            });
+        }
+
+        // Get following IDs safely
+        let followingIds = [];
+        
+        // Only try to populate following if it exists
+        if (user.following && user.following.length > 0) {
+            const populatedUser = await User.findById(userId).populate("following");
+            if (populatedUser && populatedUser.following) {
+                followingIds = populatedUser.following.map(friend => friend._id);
+            }
+        }
+        
+        // Always include current user's stories
         followingIds.push(userId);
 
         const stories = await Story.find({
@@ -63,9 +89,14 @@ export const getStories = async (req, res) => {
         res.status(200).json({ status: true, data: stories });
     } catch (error) {
         console.error("Error getting stories:", error);
-        res.status(500).json({ status: false, message: "Error fetching stories", error: error.message });
+        res.status(500).json({
+            status: false,
+            message: "Error fetching stories",
+            error: error.message,
+        });
     }
 };
+
 
 export const getUserStories = async (req, res) => {
     try {
